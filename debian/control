@@ -1,0 +1,24 @@
+Source: crystalhd
+Priority: extra
+Maintainer: Ouattara Oumar Aziz (alias wattazoum) <wattazoum@gmail.com>
+Build-Depends: debhelper (>= 7.0.50), cmake, autoconf,
+Standards-Version: 3.8.1
+Section: libs
+Homepage: http://www.broadcom.com/support/crystal_hd/
+Vcs-Git: git://git.wilsonet.com/crystalhd.git/
+Vcs-Browser: http://git.wilsonet.com/crystalhd.git/
+
+Package: libcrystalhd-dev
+Section: libdevel
+Architecture: any
+Depends: libcrystalhd1 (= ${binary:Version}),
+         ${shlibs:Depends}, ${misc:Depends}
+Description: Crystal HD Video Decoder Drivers headers
+ Crystal HD Video Decoder Drivers headers
+
+Package: libcrystalhd1
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Crystal HD Video Decoder Drivers libraries
+ Crystal HD Video Decoder Drivers libraries
