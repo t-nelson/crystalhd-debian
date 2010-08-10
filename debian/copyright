@@ -34,8 +34,7 @@ The Debian packaging is:
 
     Copyright (C) 2010 Ouattara Oumar Aziz (alias wattazoum) <wattazoum@gmail.com>
 
-and is licensed under the GPL version 3, 
-see `/usr/share/common-licenses/GPL-3'.
+and is licensed under the same terms as crystalhd.
 
 # Please also look if there are files or directories which have a
 # different copyright/license attached and list them here.
