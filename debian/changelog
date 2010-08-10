@@ -1,5 +1,9 @@
-crystalhd (0.1-20100118) hardy; urgency=low
+crystalhd (1:0.0~git20100118-1) unstable; urgency=low
 
-  * Initial release 
+  [ Ouattara Oumar Aziz (alias wattazoum) ]
+  * Initial release
 
- -- Ouattara Oumar Aziz (alias wattazoum) <wattazoum@gmail.com>  Mon, 18 Jan 2010 23:40:11 +0100
+  [ Andres Mejia ]
+  * Fixup version.
+
+ -- Andres Mejia <mcitadel@gmail.com>  Tue, 10 Aug 2010 15:48:31 -0400
