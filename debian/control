@@ -6,8 +6,8 @@ Build-Depends: debhelper (>= 7.0.50~), cmake, autoconf,
 Standards-Version: 3.9.1
 Section: libs
 Homepage: http://www.broadcom.com/support/crystal_hd/
-Vcs-Git: git://git.wilsonet.com/crystalhd.git/
-Vcs-Browser: http://git.wilsonet.com/crystalhd.git/
+Vcs-Git: git://git.debian.org/git/pkg-multimedia/crystalhd.git
+Vcs-Browser: http://git.debian.org/?p=pkg-multimedia/crystalhd.git
 
 Package: libcrystalhd-dev
 Section: libdevel
