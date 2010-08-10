@@ -11,5 +11,8 @@ crystalhd (1:0.0~git20100118-1) unstable; urgency=low
   * Update Vcs-* entries to point to location where packaging is done.
   * Remove template README.Debian file.
   * Remove unneeded debian/<package>.dirs files and debian/dirs.
+  * Make myself maintainer and Ouattara an Uploader.
+  * Ensure the packaging is licensed under the same terms as crystalhd.
+  * Fixup copyright file.
 
- -- Andres Mejia <mcitadel@gmail.com>  Tue, 10 Aug 2010 16:04:25 -0400
+ -- Andres Mejia <mcitadel@gmail.com>  Tue, 10 Aug 2010 16:11:13 -0400
