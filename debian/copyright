@@ -1,5 +1,5 @@
-This package was debianized by Ouattara Oumar Aziz (alias wattazoum) <wattazoum@gmail.com> on
-Mon, 18 Jan 2010 21:12:59 +0100.
+This package was debianized by Ouattara Oumar Aziz (alias wattazoum)
+<wattazoum@gmail.com> on Mon, 18 Jan 2010 21:12:59 +0100.
 
 It was downloaded from http://git.wilsonet.com/crystalhd.git/
 
@@ -32,9 +32,7 @@ Public License can be found in `/usr/share/common-licenses/LGPL-2'.
 
 The Debian packaging is:
 
-    Copyright (C) 2010 Ouattara Oumar Aziz (alias wattazoum) <wattazoum@gmail.com>
+    Copyright (C) 2010 Ouattara Oumar Aziz (alias wattazoum)
+      <wattazoum@gmail.com>
 
 and is licensed under the same terms as crystalhd.
-
-# Please also look if there are files or directories which have a
-# different copyright/license attached and list them here.
