@@ -1,6 +1,7 @@
 Source: crystalhd
 Priority: extra
-Maintainer: Ouattara Oumar Aziz (alias wattazoum) <wattazoum@gmail.com>
+Maintainer: Ouattara Oumar Aziz (alias wattazoum) <wattazoum@gmail.com>,
+            Andres Mejia <mcitadel@gmail.com>
 Build-Depends: debhelper (>= 7.0.50), cmake, autoconf,
 Standards-Version: 3.8.1
 Section: libs
