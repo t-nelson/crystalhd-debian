@@ -3,7 +3,7 @@ Priority: extra
 Maintainer: Ouattara Oumar Aziz (alias wattazoum) <wattazoum@gmail.com>,
             Andres Mejia <mcitadel@gmail.com>
 Build-Depends: debhelper (>= 7.0.50~), cmake, autoconf,
-Standards-Version: 3.8.1
+Standards-Version: 3.9.1
 Section: libs
 Homepage: http://www.broadcom.com/support/crystal_hd/
 Vcs-Git: git://git.wilsonet.com/crystalhd.git/
