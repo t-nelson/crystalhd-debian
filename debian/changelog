@@ -1,7 +1,7 @@
 crystalhd (1:0.0~git20100118-1) unstable; urgency=low
 
   [ Ouattara Oumar Aziz (alias wattazoum) ]
-  * Initial release
+  * Initial release. (Closes: #577130)
 
   [ Andres Mejia ]
   * Fixup version.
