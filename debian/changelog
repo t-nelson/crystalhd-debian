@@ -7,7 +7,7 @@ crystalhd (1:0.0~git20100118-1) unstable; urgency=low
   * Fixup version.
   * Build depend on debhelper (>= 7.0.50~).
   * Bump Standards-Version to 3.9.1.
-  * Explicitely use source format 1.0.
+  * Explicitly use source format 1.0.
   * Update Vcs-* entries to point to location where packaging is done.
   * Remove template README.Debian file.
   * Remove unneeded debian/<package>.dirs files and debian/dirs.
@@ -17,4 +17,4 @@ crystalhd (1:0.0~git20100118-1) unstable; urgency=low
   * Fixup descriptions of packages.
   * Remove unnecessary build dependencies on cmake and automake.
 
- -- Andres Mejia <mcitadel@gmail.com>  Tue, 10 Aug 2010 22:57:35 -0400
+ -- Andres Mejia <mcitadel@gmail.com>  Tue, 10 Aug 2010 23:00:00 -0400
