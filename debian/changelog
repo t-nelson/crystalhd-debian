@@ -15,5 +15,6 @@ crystalhd (1:0.0~git20100118-1) unstable; urgency=low
   * Ensure the packaging is licensed under the same terms as crystalhd.
   * Fixup copyright file.
   * Fixup descriptions of packages.
+  * Remove unnecessary build dependencies on cmake and automake.
 
- -- Andres Mejia <mcitadel@gmail.com>  Tue, 10 Aug 2010 22:48:45 -0400
+ -- Andres Mejia <mcitadel@gmail.com>  Tue, 10 Aug 2010 22:57:35 -0400
