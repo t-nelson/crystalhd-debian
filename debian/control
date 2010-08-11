@@ -14,12 +14,20 @@ Section: libdevel
 Architecture: any
 Depends: libcrystalhd1 (= ${binary:Version}),
          ${shlibs:Depends}, ${misc:Depends}
-Description: Crystal HD Video Decoder Drivers headers
- Crystal HD Video Decoder Drivers headers
+Description: Crystal HD Video Decoder (development files)
+ Crystal HD Solution is a product offered by Broadcom. It is used to enable
+ flawless playback of 1080p high definition video across a wide range of
+ systems.
+ .
+ This package contains the files necessary for development.
 
 Package: libcrystalhd1
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: Crystal HD Video Decoder Drivers libraries
- Crystal HD Video Decoder Drivers libraries
+Description: Crystal HD Video Decoder (shared library)
+ Crystal HD Solution is a product offered by Broadcom. It is used to enable
+ flawless playback of 1080p high definition video across a wide range of
+ systems.
+ .
+ This package contains the shared library.
