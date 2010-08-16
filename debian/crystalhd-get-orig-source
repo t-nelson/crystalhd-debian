@@ -12,7 +12,8 @@ CRYSTALHD_VERSION="0.0~git${DATE_RETRIEVED}.${COMMIT_SHORT_FORM}"
 git clone "$CRYSTALHD_GIT_URL" "crystalhd-${CRYSTALHD_VERSION}"
 cd "crystalhd-${CRYSTALHD_VERSION}"
 git checkout "$CRYSTALHD_GIT_COMMIT"
-rm -rf .git .gitignore
+rm -rf .git .gitignore driver examples filters firmware include/flea \
+  export-driver-for-staging.sh
 cd ..
 tar --exclude-vcs -czf "crystalhd_${CRYSTALHD_VERSION}.orig.tar.gz" \
   "crystalhd-${CRYSTALHD_VERSION}/"
