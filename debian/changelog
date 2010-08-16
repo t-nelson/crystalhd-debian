@@ -1,4 +1,4 @@
-crystalhd (1:0.0~git20100118-1) unstable; urgency=low
+crystalhd (1:0.0~git20100815.6df10a0-1) unstable; urgency=low
 
   [ Ouattara Oumar Aziz (alias wattazoum) ]
   * Initial release. (Closes: #577130)
@@ -17,4 +17,4 @@ crystalhd (1:0.0~git20100118-1) unstable; urgency=low
   * Fixup descriptions of packages.
   * Remove unnecessary build dependencies on cmake and automake.
 
- -- Andres Mejia <mcitadel@gmail.com>  Tue, 10 Aug 2010 23:00:00 -0400
+ -- Andres Mejia <mcitadel@gmail.com>  Mon, 16 Aug 2010 00:56:43 -0400
