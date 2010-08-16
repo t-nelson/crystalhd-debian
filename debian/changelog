@@ -1,20 +1,5 @@
 crystalhd (1:0.0~git20100815.6df10a0-1) unstable; urgency=low
 
-  [ Ouattara Oumar Aziz (alias wattazoum) ]
   * Initial release. (Closes: #577130)
 
-  [ Andres Mejia ]
-  * Fixup version.
-  * Build depend on debhelper (>= 7.0.50~).
-  * Bump Standards-Version to 3.9.1.
-  * Explicitly use source format 1.0.
-  * Update Vcs-* entries to point to location where packaging is done.
-  * Remove template README.Debian file.
-  * Remove unneeded debian/<package>.dirs files and debian/dirs.
-  * Make myself maintainer and Ouattara an Uploader.
-  * Ensure the packaging is licensed under the same terms as crystalhd.
-  * Fixup copyright file.
-  * Fixup descriptions of packages.
-  * Remove unnecessary build dependencies on cmake and automake.
-
- -- Andres Mejia <mcitadel@gmail.com>  Mon, 16 Aug 2010 00:56:43 -0400
+ -- Andres Mejia <mcitadel@gmail.com>  Mon, 16 Aug 2010 01:56:06 -0400
