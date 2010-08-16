@@ -1,7 +1,8 @@
 Source: crystalhd
 Priority: extra
-Maintainer: Andres Mejia <mcitadel@gmail.com>
-Uploaders: Ouattara Oumar Aziz (alias wattazoum) <wattazoum@gmail.com>
+Maintainer: Debian multimedia packages maintainers <pkg-multimedia-maintainers@lists.alioth.debian.org>
+Uploaders: Andres Mejia <mcitadel@gmail.com>,
+           Ouattara Oumar Aziz (alias wattazoum) <wattazoum@gmail.com>
 Build-Depends: debhelper (>= 7.0.50~), quilt (>= 0.46-7~),
 Standards-Version: 3.9.1
 Section: libs
