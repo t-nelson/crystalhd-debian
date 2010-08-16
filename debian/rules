@@ -1,7 +1,13 @@
 #!/usr/bin/make -f
 %:
-	dh $@
+	dh --with quilt $@
+
+override_dh_auto_build:
+	make -C linux_lib/libcrystalhd
 
 override_dh_auto_install:
-	make install destdir=$(CURDIR)/debian/tmp
+	make install -C linux_lib/libcrystalhd DESTDIR=$(CURDIR)/debian/tmp
 
+override_dh_auto_clean:
+	dh_clean
+	make clean -C linux_lib/libcrystalhd
