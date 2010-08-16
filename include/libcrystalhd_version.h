@@ -1,7 +1,7 @@
 /********************************************************************
  * Copyright(c) 2006-2009 Broadcom Corporation.
  *
- *  Name: version_lnx.h
+ *  Name: libcrystalhd_version.h
  *
  *  Description: Version numbering for the driver use.
  *
@@ -51,29 +51,30 @@
 #define INVALID_VERSION		0xFFFF
 
 /*========================== Common For All Components =================================*/
-#define RC_COMPANY_NAME		"Broadcom Corporation\0"
-#define RC_PRODUCT_VERSION	"2.7.0.23"
-#define RC_W_PRODUCT_VERSION	L"2.7.0.23"
-#define RC_PRODUCT_NAME		"Broadcom Crystal HD Video Decoder\0"
-#define RC_COMMENTS		"Broadcom BCM70012 Controller\0"
-#define RC_COPYRIGHT		"Copyright(c) 2007-2009 Broadcom Corporation"
-#define RC_PRIVATE_BUILD	"Broadcom Corp. Private\0"
-#define RC_LEGAL_TRADEMARKS	" \0"
-#define BRCM_MAJOR_VERSION	0
+#define BRCM_MAJOR_VERSION	3
 
+#define DRIVER_MAJOR_VERSION        BRCM_MAJOR_VERSION
+#define DRIVER_MINOR_VERSION        6
+#define DRIVER_REVISION             0
+
+#define RC_FILE_VERSION             STRINGIFY_VERSION(DRIVER_MAJOR_VERSION,DRIVER_MINOR_VERSION,DRIVER_REVISION) ".0"
 
 /*======================= Device Interface Library ========================*/
 #define DIL_MAJOR_VERSION	BRCM_MAJOR_VERSION
-#define DIL_MINOR_VERSION	9
-#define DIL_REVISION		25
+#define DIL_MINOR_VERSION	6
+#define DIL_REVISION		0
 
 #define DIL_RC_FILE_VERSION	STRINGIFY_VERSION(DIL_MAJOR_VERSION,DIL_MINOR_VERSION,DIL_REVISION)
 
 /*========================== deconf utility ==============================*/
 #define DECONF_MAJOR_VERSION	BRCM_MAJOR_VERSION
 #define DECONF_MINOR_VERSION	9
-#define DECONF_REVISION		17
+#define DECONF_REVISION		18
 #define DECONF_RC_FILE_VERSION  STRINGIFY_VERSION(DIL_MAJOR_VERSION,DIL_MINOR_VERSION,DIL_REVISION)
 
+/*========================== Firmware ==============================*/
+#define FW_MAJOR_VERSION        BRCM_MAJOR_VERSION
+#define FW_MINOR_VERSION        60
+#define FW_REVISION		39
 
 #endif
