@@ -1,0 +1,18 @@
+#!/bin/sh
+
+# Script used to generate the orig source tarball for crystalhd.
+
+CRYSTALHD_GIT_URL="git://git.wilsonet.com/crystalhd.git"
+CRYSTALHD_GIT_COMMIT="6df10a0599b5adf7e6f08529f0954a3fa24ad0ad"
+DATE_RETRIEVED="20100815"
+COMMIT_SHORT_FORM="$(echo $CRYSTALHD_GIT_COMMIT | \
+                     sed -e 's/^\([[:xdigit:]]\{,7\}\).*/\1/')"
+CRYSTALHD_VERSION="0.0~git${DATE_RETRIEVED}.${COMMIT_SHORT_FORM}"
+
+git clone "$CRYSTALHD_GIT_URL" "crystalhd-${CRYSTALHD_VERSION}"
+cd "crystalhd-${CRYSTALHD_VERSION}"
+git checkout "$CRYSTALHD_GIT_COMMIT"
+rm -rf .git .gitignore
+cd ..
+tar --exclude-vcs -czf "crystalhd_${CRYSTALHD_VERSION}.orig.tar.gz" \
+  "crystalhd-${CRYSTALHD_VERSION}/"
