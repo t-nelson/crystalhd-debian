@@ -85,9 +85,6 @@ typedef enum _BC_FWDIAG_CMDS{
 }BC_FWDIAG_CMDS;
 
 
-extern DRVIFLIB_INT_API BC_STATUS
-DtsPushFwBinToLink(HANDLE hDevice, char *FwBinFile, uint32_t *bytesDnld);
-
 DRVIFLIB_INT_API BC_STATUS
 DtsDownloadFWDIAGToLINK(HANDLE hDevice, char *FwBinFile);
 
