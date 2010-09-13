@@ -538,7 +538,18 @@ DtsDeviceOpen(
 	// set Ctx->DevId early, other depend on it
 	DtsGetContext(*hDevice)->DevId = DeviceID;
 
-	DtsSetCoreClock(*hDevice, 200);
+	/*
+	 * Old layout link cards have issues w/a core clock of 200, so we use
+	 * 180 for all link cards, as we have no way to tell old layout from
+	 * new layout cards.
+	 */
+	if (DeviceID == BC_PCI_DEVID_LINK)
+		DtsSetCoreClock(*hDevice, 180);
+#if 0
+	/* flea cards don't actually support setting core clock at all */
+	else
+		DtsSetCoreClock(*hDevice, 200);
+#endif
 
 	/*
 	 * We have to specify the mode to the driver.
@@ -1538,7 +1549,6 @@ DtsProcOutput(
 
 	savFlags = pOut->PoutFlags;
 	pOut->discCnt = 0;
-	pOut->b422Mode = Ctx->b422Mode;
 
 	do
 	{
@@ -1653,23 +1663,28 @@ DtsProcOutput(
 		OutBuffs.PoutFlags |= pOut->PoutFlags;
 		width = Ctx->HWOutPicWidth;
 		OutBuffs.b422Mode = Ctx->b422Mode;
-		pOut->AppCallBack(	pOut->hnd,
-							width,
-							OutBuffs.PicInfo.height,
-							0,
-							&OutBuffs);
+		pOut->AppCallBack(pOut->hnd,
+					width,
+					OutBuffs.PicInfo.height,
+					0,
+					&OutBuffs);
 	}
 
-	if(Ctx->b422Mode) {
-		sts = DtsCopyRawDataToOutBuff(Ctx,pOut,&OutBuffs);
-	}else{
-		if(pOut->PoutFlags & BC_POUT_FLAGS_YV12){
-			sts = DtsCopyNV12ToYV12(Ctx,pOut,&OutBuffs);
-		}else {
-			sts = DtsCopyNV12(Ctx,pOut,&OutBuffs);
+	if (pOut->PoutFlags & BC_POUT_FLAGS_MODE) {
+		sts = DtsCopyFormat(Ctx,pOut,&OutBuffs);
+	} else {
+		pOut->b422Mode = Ctx->b422Mode;
+		if(Ctx->b422Mode) {
+			sts = DtsCopyRawDataToOutBuff(Ctx,pOut,&OutBuffs);
+		}else{
+			if(pOut->PoutFlags & BC_POUT_FLAGS_YV12){
+				sts = DtsCopyNV12ToYV12(Ctx,pOut,&OutBuffs);
+			}else {
+				sts = DtsCopyNV12(Ctx,pOut,&OutBuffs);
+			}
 		}
 	}
-
+	
 	if(pOut->PoutFlags & BC_POUT_FLAGS_PIB_VALID){
 		pOut->PicInfo = OutBuffs.PicInfo;
 	}
