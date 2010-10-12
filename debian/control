@@ -2,7 +2,11 @@ Source: crystalhd
 Priority: optional
 Maintainer: Andres Mejia <mcitadel@gmail.com>
 Uploaders: Ouattara Oumar Aziz (alias wattazoum) <wattazoum@gmail.com>
-Build-Depends: debhelper (>= 7.0.50~), quilt (>= 0.46-7~),
+Build-Depends: debhelper (>= 7.0.50~),
+               quilt (>= 0.46-7~),
+               autoconf,
+               automake,
+               dkms
 Standards-Version: 3.9.1
 Section: libs
 Homepage: http://www.broadcom.com/support/crystal_hd/
@@ -31,3 +35,15 @@ Description: Crystal HD Video Decoder (shared library)
  systems.
  .
  This package contains the shared library.
+
+Package: crystalhd-dkms
+Section: kernel
+Architecture: linux-any
+Depends: ${shlibs:Depends}, ${misc:Depends}, dkms
+Suggests: linux-headers
+Description: Crystal HD Video Decoder (Linux kernel driver)
+ Crystal HD Solution is a product offered by Broadcom. It is used to enable
+ flawless playback of 1080p high definition video across a wide range of
+ systems.
+ .
+ This package contains the crystalhd Linux kernel driver.
