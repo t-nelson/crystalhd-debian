@@ -8,19 +8,21 @@ UPSTREAM_VERSION = $(shell dpkg-parsechangelog | grep -G '^Version' | \
 
 override_dh_auto_build:
 	make -C linux_lib/libcrystalhd
+	cd filters/gst/gst-plugin && ./configure --prefix=/usr
+	make -C filters/gst/gst-plugin
 
 override_dh_auto_install:
 	make install -C linux_lib/libcrystalhd DESTDIR=$(CURDIR)/debian/tmp
+	make install -C filters/gst/gst-plugin DESTDIR=$(CURDIR)/debian/tmp
 	mkdir -p $(CURDIR)/debian/tmp/usr/src/crystalhd-$(UPSTREAM_VERSION)
 	cp -rf driver $(CURDIR)/debian/tmp/usr/src/crystalhd-$(UPSTREAM_VERSION)
 	cp -rf include $(CURDIR)/debian/tmp/usr/src/crystalhd-$(UPSTREAM_VERSION)
-	autoreconf -vif \
-		$(CURDIR)/debian/tmp/usr/src/crystalhd-$(UPSTREAM_VERSION)/driver/linux
-	rm -rf $(CURDIR)/debian/tmp/usr/src/crystalhd-$(UPSTREAM_VERSION)/driver/linux/autom4te.cache
 
 override_dh_auto_clean:
 	dh_clean
 	make clean -C linux_lib/libcrystalhd
+	[ ! -f filters/gst/gst-plugin/Makefile ] || \
+		make clean distclean -C filters/gst/gst-plugin
 
 override_dh_dkms:
 	dh_dkms -V $(UPSTREAM_VERSION)

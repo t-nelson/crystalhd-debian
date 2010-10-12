@@ -4,8 +4,7 @@ Maintainer: Andres Mejia <mcitadel@gmail.com>
 Uploaders: Ouattara Oumar Aziz (alias wattazoum) <wattazoum@gmail.com>
 Build-Depends: debhelper (>= 7.0.50~),
                quilt (>= 0.46-7~),
-               autoconf,
-               automake,
+               libgstreamer0.10-dev,
                dkms
 Standards-Version: 3.9.1
 Section: libs
@@ -46,3 +45,14 @@ Description: Crystal HD Video Decoder (Linux kernel driver)
  systems.
  .
  This package contains the crystalhd Linux kernel driver.
+
+Package: gstreamer0.10-crystalhd
+Section: video
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Crystal HD Video Decoder (gstreamer plugin)
+ Crystal HD Solution is a product offered by Broadcom. It is used to enable
+ flawless playback of 1080p high definition video across a wide range of
+ systems.
+ .
+ This package contains the crystalhd gstreamer plugin.
