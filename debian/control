@@ -26,7 +26,6 @@ Description: Crystal HD Video Decoder (development files)
  This package contains the files necessary for development.
 
 Package: libcrystalhd3
-Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Crystal HD Video Decoder (shared library)
