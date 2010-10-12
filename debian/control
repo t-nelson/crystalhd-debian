@@ -5,6 +5,7 @@ Uploaders: Ouattara Oumar Aziz (alias wattazoum) <wattazoum@gmail.com>
 Build-Depends: debhelper (>= 7.0.50~),
                quilt (>= 0.46-7~),
                libgstreamer0.10-dev,
+               libgstreamer-plugins-base0.10-dev,
                dkms
 Standards-Version: 3.9.1
 Section: libs

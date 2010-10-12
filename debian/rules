@@ -3,12 +3,19 @@
 UPSTREAM_VERSION = $(shell dpkg-parsechangelog | grep -G '^Version' | \
                      cut -d ' ' -f 2 | sed 's/^[^:]:*//' | sed 's/-.*$$//')
 
+EXTRA_INCLUDES = -I$(CURDIR)/include \
+	-I$(CURDIR)/linux_lib/libcrystalhd
+
+EXTRA_LD_PATH = -L$(CURDIR)/linux_lib/libcrystalhd
+
 %:
 	dh --with quilt,dkms $@
 
 override_dh_auto_build:
 	make -C linux_lib/libcrystalhd
-	cd filters/gst/gst-plugin && ./configure --prefix=/usr
+	cd filters/gst/gst-plugin && \
+		./configure --prefix=/usr CFLAGS="$(EXTRA_INCLUDES)" \
+		LDFLAGS="$(EXTRA_LD_PATH)"
 	make -C filters/gst/gst-plugin
 
 override_dh_auto_install:
