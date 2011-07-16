@@ -2,4 +2,4 @@ crystalhd (1:0.0~git20110715.fdd2f19-1) unstable; urgency=low
 
   * Initial release. (Closes: #577130)
 
- -- Andres Mejia <mcitadel@gmail.com>  Mon, 13 Sep 2010 13:54:52 -0400
+ -- Andres Mejia <amejia@debian.org>  Sat, 16 Jul 2011 10:31:27 -0400

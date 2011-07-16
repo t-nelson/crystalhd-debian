@@ -1,6 +1,6 @@
 Source: crystalhd
 Priority: optional
-Maintainer: Andres Mejia <mcitadel@gmail.com>
+Maintainer: Andres Mejia <amejia@debian.org>
 Build-Depends: debhelper (>= 7.0.50~),
                libgstreamer0.10-dev,
                libgstreamer-plugins-base0.10-dev,
