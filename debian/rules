@@ -32,10 +32,6 @@ override_dh_auto_clean:
 	make clean -C linux_lib/libcrystalhd
 	[ ! -f filters/gst/gst-plugin/Makefile ] || \
 		make clean distclean -C filters/gst/gst-plugin
-	! test -x `which quilt` || \
-		QUILT_PATCHES=debian/patches quilt pop -a || \
-		true
-	rm -rf .pc/
 
 override_dh_dkms:
 	dh_dkms -V $(UPSTREAM_VERSION)
