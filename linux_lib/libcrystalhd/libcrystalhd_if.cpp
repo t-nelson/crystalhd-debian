@@ -274,7 +274,7 @@ static __attribute__((aligned(4))) uint8_t ExtData[] =
 { 0x00, 0x00};
 
 
-static BC_STATUS DtsSetupHardware(HANDLE hDevice, BOOL IgnClkChk)
+BC_STATUS DtsSetupHardware(HANDLE hDevice, BOOL IgnClkChk)
 {
 	BC_STATUS sts = BC_STS_SUCCESS;
 	DTS_LIB_CONTEXT *Ctx;
@@ -463,14 +463,12 @@ DtsDeviceOpen(
 	/* Initialize Internal Driver interfaces.. */
 	if( (Sts = DtsInitInterface(drvHandle,hDevice, mode)) != BC_STS_SUCCESS){
 		DebugLog_Trace(LDIL_ERR,"DtsDeviceOpen: Interface Init Failed:%x\n",Sts);
-		close(drvHandle);
 		DtsReleaseInterface(DtsGetContext(*hDevice));
 		DtsDelDilShMem();
 		return Sts;
 	}
 	if( (Sts = DtsGetHwType(*hDevice,&DeviceID,&VendorID,&RevID))!=BC_STS_SUCCESS){
 		DebugLog_Trace(LDIL_DBG,"Get Hardware Type Failed\n");
-		close(drvHandle);
 		DtsReleaseInterface(DtsGetContext(*hDevice));
 		DtsDelDilShMem();
 		return Sts;
@@ -494,7 +492,6 @@ DtsDeviceOpen(
 	 */
 	if ((Sts = DtsGetVersion(*hDevice, &drvVer, &dilVer)) != BC_STS_SUCCESS) {
 		DebugLog_Trace(LDIL_DBG,"Get drv ver failed\n");
-		close(drvHandle);
 		DtsReleaseInterface(DtsGetContext(*hDevice));
 		DtsDelDilShMem();
 		return Sts;
@@ -535,7 +532,6 @@ DtsDeviceOpen(
 	if( (Sts = DtsNotifyOperatingMode(*hDevice,drvMode)) != BC_STS_SUCCESS){
 		DebugLog_Trace(LDIL_DBG,"Notify Operating Mode Failed\n");
 		DtsReleaseInterface(DtsGetContext(*hDevice));
-		close(drvHandle);
 		DtsDelDilShMem();
 		return Sts;
 	}
@@ -586,7 +582,6 @@ DtsDeviceOpen(
 		if(Sts != BC_STS_SUCCESS )
 		{
 			DtsReleaseInterface(DtsGetContext(*hDevice));
-			close(drvHandle);
 			DtsDelDilShMem();
 			goto exit;
 		}
@@ -651,6 +646,7 @@ DtsDeviceClose(
 	}
 	DtsSetOPMode(globMode);
 	DtsReleasePESConverter(hDevice);
+
 	return DtsReleaseInterface(Ctx);
 
 }
@@ -855,8 +851,8 @@ DtsOpenDecoder(
 	Ctx->LastSessNum = -1;
 	Ctx->EOSCnt = 0;
 	Ctx->DrvStatusEOSCnt = 0;
-	Ctx->bEOSCheck = FALSE;
-	Ctx->bEOS = FALSE;
+	Ctx->bEOSCheck = false;
+	Ctx->bEOS = false;
 	Ctx->CapState = 0;
 	Ctx->hw_paused = false;
 	Ctx->fw_cmd_issued = false;
@@ -1510,7 +1506,7 @@ DtsProcOutput(
 		{
 			if(sts == BC_STS_TIMEOUT)
 			{
-				if (Ctx->bEOSCheck == TRUE && Ctx->bEOS == FALSE)
+				if (Ctx->bEOSCheck == true && Ctx->bEOS == false)
 				{
 					if(milliSecWait)
 						Ctx->EOSCnt = BC_EOS_PIC_COUNT;
@@ -1551,23 +1547,23 @@ DtsProcOutput(
 			DtsUpdateOutStats(Ctx,pOut);
 			DtsUpdateVidParams(Ctx, pOut);
 
-			DtsRelRxBuff(Ctx,&Ctx->pOutData->u.RxBuffs,TRUE);
+			DtsRelRxBuff(Ctx,&Ctx->pOutData->u.RxBuffs,true);
 
 			return BC_STS_FMT_CHANGE;
 		}
 
 		if (Ctx->DevId == BC_PCI_DEVID_FLEA)
 		{
-			if (Ctx->bEOSCheck == TRUE && Ctx->bEOS == FALSE && (OutBuffs.PicInfo.flags & VDEC_FLAG_EOS))
+			if (Ctx->bEOSCheck == true && Ctx->bEOS == true && (OutBuffs.PicInfo.flags & VDEC_FLAG_EOS))
 			{
-				Ctx->bEOS = TRUE;
+				Ctx->bEOS = true;
 				pOut->PicInfo.flags |= (VDEC_FLAG_LAST_PICTURE|VDEC_FLAG_EOS);
 				DebugLog_Trace(LDIL_DBG,"HIT EOS with PIB tag\n");
 			}
 		}
 		else
 		{
-			if (DtsCheckRptPic(Ctx, &OutBuffs) == TRUE)
+			if (DtsCheckRptPic(Ctx, &OutBuffs) == true)
 			{
 				DtsRelRxBuff(Ctx,&Ctx->pOutData->u.RxBuffs,FALSE);
 				return BC_STS_NO_DATA;
@@ -1779,7 +1775,7 @@ DtsSendData( HANDLE  hDevice ,
 
 	// for now check the sizes here and wait if there is not enough space
 	while(ulSizeInBytes > Ctx->circBuf.freeSize) {
-		usleep(20 * 1000);
+		usleep(5 * 1000);
 		if (Ctx->State !=  BC_DEC_STATE_START && Ctx->State != BC_DEC_STATE_PAUSE)
 			return BC_STS_IO_USER_ABORT;
 	}
@@ -2113,8 +2109,8 @@ DtsProcInput( HANDLE  hDevice ,
 		}
 	}
 
-	Ctx->bEOSCheck = FALSE;
-	Ctx->bEOS = FALSE;
+	Ctx->bEOSCheck = false;
+	Ctx->bEOS = false;
 
 	// According to ASF spec special timestamps can be 0x1FFFFFFFF or 0x1FFFFFFFE
 	// NAREN - FIXME - should we add support for these pre-roll timestamps
@@ -2300,7 +2296,7 @@ DtsSendEOS( HANDLE  hDevice, uint32_t Op
 			sts = DtsAlignSendData(hDevice, pEOS, nEOSLen, 0, 0);
 			sts = DtsAlignSendData(hDevice, pEOS, nEOSLen, 0, 0);
 		}
-		Ctx->bEOSCheck = TRUE;
+		Ctx->bEOSCheck = true;
 	}
 
 	//Reset
@@ -2336,13 +2332,14 @@ DtsFlushInput( HANDLE  hDevice ,
 	if(Op == 0 || Op == 5) // DRAIN
 	{
 		DtsSendEOS(hDevice, Op);
+		return BC_STS_SUCCESS;
 	}
 	else
 	{
 		Ctx->PESConvParams.m_bAddSpsPps = true;
 		Ctx->State = BC_DEC_STATE_FLUSH;
 		txBufFlush(&Ctx->circBuf);
-		Ctx->bEOSCheck = FALSE;
+		Ctx->bEOSCheck = false;
 		bc_sleep_ms(30); // For the cancel to take place in case we are looping
 		sts = DtsCancelTxRequest(hDevice, Op);
 		if((Op == 3) || (sts != BC_STS_SUCCESS))
@@ -2897,13 +2894,14 @@ DtsGetDriverStatus( HANDLE  hDevice,
 	pStatus->InputTotalSize     = temp.ipTotalSize;
 	pStatus->cpbEmptySize		= temp.DrvcpbEmptySize;
 	pStatus->picNumFlags		= temp.picNumFlags;
+	pStatus->PowerStateChange	= temp.pwr_state_change;
 
 	if(temp.eosDetected)
 	{
-		Ctx->bEOS = TRUE;
+		Ctx->bEOS = true;
 	}
 
-	if (Ctx->bEOSCheck == TRUE && Ctx->bEOS == FALSE)
+	if (Ctx->bEOSCheck == true && Ctx->bEOS == true)
 	{
 		if (pStatus->ReadyListCount == 0)
 		{

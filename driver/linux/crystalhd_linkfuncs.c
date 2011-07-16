@@ -29,7 +29,6 @@
 #include "crystalhd_hw.h"
 #include "crystalhd_lnx.h"
 #include "crystalhd_linkfuncs.h"
-#include "bc_defines.h"
 
 #define OFFSETOF(_s_, _m_) ((size_t)(unsigned long)&(((_s_ *)0)->_m_))
 
@@ -228,7 +227,9 @@ void crystalhd_link_enable_uarts(struct crystalhd_hw *hw)
 void crystalhd_link_start_dram(struct crystalhd_hw *hw)
 {
 	hw->pfnWriteDevRegister(hw->adp, SDRAM_PARAM, ((40 / 5 - 1) <<  0) |
-	/* tras (40ns tras)/(5ns period) -1 ((15/5 - 1) <<  4) | // trcd */
+#if 0
+	 tras (40ns tras)/(5ns period) -1 ((15/5 - 1) <<  4) | /* trcd */
+#endif
 		      ((15 / 5 - 1) <<  7) |	/* trp */
 		      ((10 / 5 - 1) << 10) |	/* trrd */
 		      ((15 / 5 + 1) << 12) |	/* twr */
@@ -250,8 +251,8 @@ void crystalhd_link_start_dram(struct crystalhd_hw *hw)
 
 bool crystalhd_link_bring_out_of_rst(struct crystalhd_hw *hw)
 {
-	link_misc_perst_deco_ctrl rst_deco_cntrl;
-	link_misc_perst_clk_ctrl rst_clk_cntrl;
+	union link_misc_perst_deco_ctrl rst_deco_cntrl;
+	union link_misc_perst_clk_ctrl rst_clk_cntrl;
 	uint32_t temp;
 
 	/*
@@ -309,8 +310,8 @@ bool crystalhd_link_bring_out_of_rst(struct crystalhd_hw *hw)
 
 bool crystalhd_link_put_in_reset(struct crystalhd_hw *hw)
 {
-	link_misc_perst_deco_ctrl rst_deco_cntrl;
-	link_misc_perst_clk_ctrl  rst_clk_cntrl;
+	union link_misc_perst_deco_ctrl rst_deco_cntrl;
+	union link_misc_perst_clk_ctrl  rst_clk_cntrl;
 	uint32_t                  temp;
 
 	/*
@@ -365,7 +366,7 @@ bool crystalhd_link_put_in_reset(struct crystalhd_hw *hw)
 
 void crystalhd_link_disable_interrupts(struct crystalhd_hw *hw)
 {
-	intr_mask_reg   intr_mask;
+	union intr_mask_reg   intr_mask;
 	intr_mask.whole_reg = hw->pfnReadFPGARegister(hw->adp, INTR_INTR_MSK_STS_REG);
 	intr_mask.mask_pcie_err = 1;
 	intr_mask.mask_pcie_rbusmast_err = 1;
@@ -381,7 +382,7 @@ void crystalhd_link_disable_interrupts(struct crystalhd_hw *hw)
 
 void crystalhd_link_enable_interrupts(struct crystalhd_hw *hw)
 {
-	intr_mask_reg   intr_mask;
+	union intr_mask_reg   intr_mask;
 	intr_mask.whole_reg = hw->pfnReadFPGARegister(hw->adp, INTR_INTR_MSK_STS_REG);
 	intr_mask.mask_pcie_err = 1;
 	intr_mask.mask_pcie_rbusmast_err = 1;
@@ -507,7 +508,7 @@ bool crystalhd_link_start_device(struct crystalhd_hw *hw)
 	crystalhd_link_start_dram(hw);
 	crystalhd_link_enable_uarts(hw);
 
-	// Disable L1 ASPM while video is playing as this causes performance problems otherwise
+	/* Disable L1 ASPM while video is playing as this causes performance problems otherwise */
 	reg_pwrmgmt = hw->pfnReadFPGARegister(hw->adp, PCIE_DLL_DATA_LINK_CONTROL);
 	reg_pwrmgmt &= ~ASPM_L1_ENABLE;
 
@@ -548,7 +549,7 @@ bool crystalhd_link_stop_device(struct crystalhd_hw *hw)
 	return true;
 }
 
-uint32_t link_GetPicInfoLineNum(crystalhd_dio_req *dio, uint8_t *base)
+uint32_t link_GetPicInfoLineNum(struct crystalhd_dio_req *dio, uint8_t *base)
 {
 	uint32_t PicInfoLineNum = 0;
 
@@ -572,7 +573,7 @@ uint32_t link_GetPicInfoLineNum(crystalhd_dio_req *dio, uint8_t *base)
 	return PicInfoLineNum;
 }
 
-uint32_t link_GetMode422Data(crystalhd_dio_req *dio,
+uint32_t link_GetMode422Data(struct crystalhd_dio_req *dio,
 			       PBC_PIC_INFO_BLOCK pPicInfoLine, int type)
 {
 	int i;
@@ -600,7 +601,7 @@ uint32_t link_GetMode422Data(crystalhd_dio_req *dio,
 	return val;
 }
 
-uint32_t link_GetMetaDataFromPib(crystalhd_dio_req *dio,
+uint32_t link_GetMetaDataFromPib(struct crystalhd_dio_req *dio,
 				   PBC_PIC_INFO_BLOCK pPicInfoLine)
 {
 	uint32_t picture_meta_payload = 0;
@@ -613,7 +614,7 @@ uint32_t link_GetMetaDataFromPib(crystalhd_dio_req *dio,
 	return BC_SWAP32(picture_meta_payload);
 }
 
-uint32_t link_GetHeightFromPib(crystalhd_dio_req *dio,
+uint32_t link_GetHeightFromPib(struct crystalhd_dio_req *dio,
 				 PBC_PIC_INFO_BLOCK pPicInfoLine)
 {
 	uint32_t height = 0;
@@ -627,7 +628,7 @@ uint32_t link_GetHeightFromPib(crystalhd_dio_req *dio,
 }
 
 /* This function cannot be called from ISR context since it uses APIs that can sleep */
-bool link_GetPictureInfo(struct crystalhd_hw *hw, uint32_t picHeight, uint32_t picWidth, crystalhd_dio_req *dio,
+bool link_GetPictureInfo(struct crystalhd_hw *hw, uint32_t picHeight, uint32_t picWidth, struct crystalhd_dio_req *dio,
 			   uint32_t *PicNumber, uint64_t *PicMetaData)
 {
 	uint32_t PicInfoLineNum = 0, HeightInPib = 0, offset = 0, size = 0;
@@ -645,10 +646,10 @@ bool link_GetPictureInfo(struct crystalhd_hw *hw, uint32_t picHeight, uint32_t p
 	if (!dio || !picWidth)
 		goto getpictureinfo_err_nosem;
 
-// 	if(down_interruptible(&hw->fetch_sem))
-// 		goto getpictureinfo_err_nosem;
+/*	if(down_interruptible(&hw->fetch_sem)) */
+/*		goto getpictureinfo_err_nosem; */
 
-	dio->pib_va = kmalloc(2 * sizeof(BC_PIC_INFO_BLOCK) + 16, GFP_KERNEL); // since copy_from_user can sleep anyway
+	dio->pib_va = kmalloc(2 * sizeof(BC_PIC_INFO_BLOCK) + 16, GFP_KERNEL); /* since copy_from_user can sleep anyway */
 	if(dio->pib_va == NULL)
 		goto getpictureinfo_err;
 
@@ -666,7 +667,7 @@ bool link_GetPictureInfo(struct crystalhd_hw *hw, uint32_t picHeight, uint32_t p
 	 */
 	/* Limit = Base + pRxDMAReq->RxYDMADesc.RxBuffSz; */
 	/* Limit = Base + (pRxDMAReq->RxYDoneSzInDword * 4); */
-// 	Limit = dio->uinfo.xfr_buff + dio->uinfo.xfr_len;
+/*	Limit = dio->uinfo.xfr_buff + dio->uinfo.xfr_len; */
 
 	PicInfoLineNum = link_GetPicInfoLineNum(dio, dio->pib_va);
 	if (PicInfoLineNum > 1092) {
@@ -706,12 +707,12 @@ bool link_GetPictureInfo(struct crystalhd_hw *hw, uint32_t picHeight, uint32_t p
 		goto getpictureinfo_err;
 	pPicInfoLine = (PBC_PIC_INFO_BLOCK)(dio->pib_va);
 
-// 	if (((uint8_t *)pPicInfoLine < Base) ||
-// 	    ((uint8_t *)pPicInfoLine > Limit)) {
-// 		dev_err(dev, "Base Limit Check Failed for Extracting "
-// 			"the PIB\n");
-// 		goto getpictureinfo_err;
-// 	}
+/*	if (((uint8_t *)pPicInfoLine < Base) || */
+/*	    ((uint8_t *)pPicInfoLine > Limit)) { */
+/*		dev_err(dev, "Base Limit Check Failed for Extracting " */
+/*			"the PIB\n"); */
+/*		goto getpictureinfo_err; */
+/*	} */
 
 	/*
 	 * -- Ajitabh[01-16-2009]:
@@ -755,12 +756,12 @@ bool link_GetPictureInfo(struct crystalhd_hw *hw, uint32_t picHeight, uint32_t p
 	if(dio->pib_va)
 		kfree(dio->pib_va);
 
-// 	up(&hw->fetch_sem);
+/*	up(&hw->fetch_sem); */
 
 	return true;
 
 getpictureinfo_err:
-// 	up(&hw->fetch_sem);
+/*	up(&hw->fetch_sem); */
 
 getpictureinfo_err_nosem:
 	if(dio->pib_va)
@@ -776,7 +777,7 @@ uint32_t link_GetRptDropParam(struct crystalhd_hw *hw, uint32_t picHeight, uint3
 	uint32_t PicNumber = 0, result = 0;
 	uint64_t PicMetaData = 0;
 
-	if(link_GetPictureInfo(hw, picHeight, picWidth, ((crystalhd_rx_dma_pkt *)pRxDMAReq)->dio_req,
+	if(link_GetPictureInfo(hw, picHeight, picWidth, ((struct crystalhd_rx_dma_pkt *)pRxDMAReq)->dio_req,
 				&PicNumber, &PicMetaData))
 		result = PicNumber;
 
@@ -794,32 +795,32 @@ bool crystalhd_link_peek_next_decoded_frame(struct crystalhd_hw *hw,
 {
 	uint32_t PicNumber = 0;
 	unsigned long flags = 0;
-	crystalhd_dioq_t *ioq;
-	crystalhd_elem_t *tmp;
-	crystalhd_rx_dma_pkt *rpkt;
+	struct crystalhd_dioq *ioq;
+	struct crystalhd_elem *tmp;
+	struct crystalhd_rx_dma_pkt *rpkt;
 
 	*meta_payload = 0;
 
 	ioq = hw->rx_rdyq;
 	spin_lock_irqsave(&ioq->lock, flags);
 
-	if ((ioq->count > 0) && (ioq->head != (crystalhd_elem_t *)&ioq->head)) {
+	if ((ioq->count > 0) && (ioq->head != (struct crystalhd_elem *)&ioq->head)) {
 		tmp = ioq->head;
 		spin_unlock_irqrestore(&ioq->lock, flags);
-		rpkt = (crystalhd_rx_dma_pkt *)tmp->data;
+		rpkt = (struct crystalhd_rx_dma_pkt *)tmp->data;
 		if (rpkt) {
-			// We are in process context here and have to check if we have repeated pictures
-			// Drop repeated pictures or garbabge pictures here
-			// This is because if we advertize a valid picture here, but later drop it
-			// It will cause single threaded applications to hang, or errors in applications that expect
-			// pictures not to be dropped once we have advertized their availability
+			/* We are in process context here and have to check if we have repeated pictures */
+			/* Drop repeated pictures or garbabge pictures here */
+			/* This is because if we advertize a valid picture here, but later drop it */
+			/* It will cause single threaded applications to hang, or errors in applications that expect */
+			/* pictures not to be dropped once we have advertized their availability */
 
-			// If format change packet, then return with out checking anything
+			/* If format change packet, then return with out checking anything */
 			if (!(rpkt->flags & (COMP_FLAG_PIB_VALID | COMP_FLAG_FMT_CHANGE))) {
 				link_GetPictureInfo(hw, hw->PICHeight, hw->PICWidth, rpkt->dio_req,
 									&PicNumber, meta_payload);
 				if(!PicNumber || (PicNumber == hw->LastPicNo) || (PicNumber == hw->LastTwoPicNo)) {
-					// discard picture
+					/* discard picture */
 					if(PicNumber != 0) {
 						hw->LastTwoPicNo = hw->LastPicNo;
 						hw->LastPicNo = PicNumber;
@@ -832,10 +833,10 @@ bool crystalhd_link_peek_next_decoded_frame(struct crystalhd_hw *hw,
 					*meta_payload = 0;
 				}
 				return true;
-				// Do not update the picture numbers here since they will be updated on the actual fetch of a valid picture
+				/* Do not update the picture numbers here since they will be updated on the actual fetch of a valid picture */
 			}
 			else
-				return false; // don't use the meta_payload information
+				return false; /* don't use the meta_payload information */
 		}
 		else
 			return false;
@@ -1028,6 +1029,7 @@ BC_STATUS crystalhd_link_stop_tx_dma_engine(struct crystalhd_hw *hw)
 	dev_dbg(dev, "Stopping TX DMA Engine..\n");
 
 	if (!(dma_cntrl & DMA_START_BIT)) {
+		hw->tx_list_post_index = 0;
 		dev_dbg(dev, "Already Stopped\n");
 		return BC_STS_SUCCESS;
 	}
@@ -1178,7 +1180,7 @@ bool crystalhd_link_rel_addr_to_pib_Q(struct crystalhd_hw *hw, uint32_t addr_to_
 	return true;
 }
 
-void link_cpy_pib_to_app(C011_PIB *src_pib, BC_PIC_INFO_BLOCK *dst_pib)
+void link_cpy_pib_to_app(struct C011_PIB *src_pib, BC_PIC_INFO_BLOCK *dst_pib)
 {
 	if (!src_pib || !dst_pib) {
 		printk(KERN_ERR "%s: Invalid Arguments\n", __func__);
@@ -1203,10 +1205,10 @@ void link_cpy_pib_to_app(C011_PIB *src_pib, BC_PIC_INFO_BLOCK *dst_pib)
 void crystalhd_link_proc_pib(struct crystalhd_hw *hw)
 {
 	unsigned int cnt;
-	C011_PIB src_pib;
+	struct C011_PIB src_pib;
 	uint32_t pib_addr, pib_cnt;
 	BC_PIC_INFO_BLOCK *AppPib;
-	crystalhd_rx_dma_pkt *rx_pkt = NULL;
+	struct crystalhd_rx_dma_pkt *rx_pkt = NULL;
 
 	pib_cnt = crystalhd_link_get_pib_avail_cnt(hw);
 
@@ -1215,11 +1217,11 @@ void crystalhd_link_proc_pib(struct crystalhd_hw *hw)
 
 	for (cnt = 0; cnt < pib_cnt; cnt++) {
 		pib_addr = crystalhd_link_get_addr_from_pib_Q(hw);
-		crystalhd_link_mem_rd(hw, pib_addr, sizeof(C011_PIB) / 4,
+		crystalhd_link_mem_rd(hw, pib_addr, sizeof(struct C011_PIB) / 4,
 				 (uint32_t *)&src_pib);
 
 		if (src_pib.bFormatChange) {
-			rx_pkt = (crystalhd_rx_dma_pkt *)
+			rx_pkt = (struct crystalhd_rx_dma_pkt *)
 					crystalhd_dioq_fetch(hw->rx_freeq);
 			if (!rx_pkt)
 				return;
@@ -1346,7 +1348,7 @@ void crystalhd_link_stop_rx_dma_engine(struct crystalhd_hw *hw)
 }
 
 BC_STATUS crystalhd_link_hw_prog_rxdma(struct crystalhd_hw *hw,
-					 crystalhd_rx_dma_pkt *rx_pkt)
+					 struct crystalhd_rx_dma_pkt *rx_pkt)
 {
 	struct device *dev;
 	uint32_t y_low_addr_reg, y_high_addr_reg;
@@ -1410,7 +1412,7 @@ BC_STATUS crystalhd_link_hw_prog_rxdma(struct crystalhd_hw *hw,
 }
 
 BC_STATUS crystalhd_link_hw_post_cap_buff(struct crystalhd_hw *hw,
-					  crystalhd_rx_dma_pkt *rx_pkt)
+					  struct crystalhd_rx_dma_pkt *rx_pkt)
 {
 	BC_STATUS sts = crystalhd_link_hw_prog_rxdma(hw, rx_pkt);
 
@@ -1464,10 +1466,10 @@ void crystalhd_link_hw_finalize_pause(struct crystalhd_hw *hw)
 	}
 	hw->rx_list_post_index = 0;
 
-// 	aspm = crystalhd_reg_rd(hw->adp, PCIE_DLL_DATA_LINK_CONTROL);
-// 	aspm |= ASPM_L1_ENABLE;
-// 	dev_info(&hw->adp->pdev->dev, "aspm on\n");
-// 	crystalhd_reg_wr(hw->adp, PCIE_DLL_DATA_LINK_CONTROL, aspm);
+/*	aspm = crystalhd_reg_rd(hw->adp, PCIE_DLL_DATA_LINK_CONTROL); */
+/*	aspm |= ASPM_L1_ENABLE; */
+/*	dev_info(&hw->adp->pdev->dev, "aspm on\n"); */
+/*	crystalhd_reg_wr(hw->adp, PCIE_DLL_DATA_LINK_CONTROL, aspm); */
 }
 
 bool crystalhd_link_rx_list0_handler(struct crystalhd_hw *hw,
@@ -1476,7 +1478,7 @@ bool crystalhd_link_rx_list0_handler(struct crystalhd_hw *hw,
 				       uint32_t uv_err_sts)
 {
 	uint32_t tmp;
-	list_sts tmp_lsts;
+	enum list_sts tmp_lsts;
 
 	if (!(y_err_sts & GET_Y0_ERR_MSK) && !(uv_err_sts & GET_UV0_ERR_MSK))
 		return false;
@@ -1545,7 +1547,7 @@ bool crystalhd_link_rx_list1_handler(struct crystalhd_hw *hw,
 				       uint32_t uv_err_sts)
 {
 	uint32_t tmp;
-	list_sts tmp_lsts;
+	enum list_sts tmp_lsts;
 
 	if (!(y_err_sts & GET_Y1_ERR_MSK) && !(uv_err_sts & GET_UV1_ERR_MSK))
 		return false;
@@ -1713,11 +1715,11 @@ BC_STATUS crystalhd_link_fw_cmd_post_proc(struct crystalhd_hw *hw,
 					  BC_FW_CMD *fw_cmd)
 {
 	BC_STATUS sts = BC_STS_SUCCESS;
-	DecRspChannelStartVideo *st_rsp = NULL;
+	struct DecRspChannelStartVideo *st_rsp = NULL;
 
 	switch (fw_cmd->cmd[0]) {
 	case eCMD_C011_DEC_CHAN_START_VIDEO:
-		st_rsp = (DecRspChannelStartVideo *)fw_cmd->rsp;
+		st_rsp = (struct DecRspChannelStartVideo *)fw_cmd->rsp;
 		hw->pib_del_Q_addr = st_rsp->picInfoDeliveryQ;
 		hw->pib_rel_Q_addr = st_rsp->picInfoReleaseQ;
 		dev_dbg(&hw->adp->pdev->dev, "DelQAddr:%x RelQAddr:%x\n",
@@ -1738,7 +1740,7 @@ BC_STATUS crystalhd_link_fw_cmd_post_proc(struct crystalhd_hw *hw,
 BC_STATUS crystalhd_link_put_ddr2sleep(struct crystalhd_hw *hw)
 {
 	uint32_t reg;
-	link_misc_perst_decoder_ctrl rst_cntrl_reg;
+	union link_misc_perst_decoder_ctrl rst_cntrl_reg;
 
 	/* Pulse reset pin of 7412 (MISC_PERST_DECODER_CTRL) */
 	rst_cntrl_reg.whole_reg = hw->pfnReadDevRegister(hw->adp, MISC_PERST_DECODER_CTRL);
@@ -1854,7 +1856,7 @@ BC_STATUS crystalhd_link_download_fw(struct crystalhd_hw *hw,
 	sig_reg = (uint32_t)DCI_SIGNATURE_DATA_7;
 	for (cnt = 0; cnt < 8; cnt++) {
 		uint32_t swapped_data = *temp_buff;
-		swapped_data = bswap_32_1(swapped_data);
+		swapped_data = cpu_to_be32(swapped_data);
 		hw->pfnWriteFPGARegister(hw->adp, sig_reg, swapped_data);
 		sig_reg -= 4;
 		temp_buff++;
@@ -1890,7 +1892,7 @@ BC_STATUS crystalhd_link_download_fw(struct crystalhd_hw *hw,
 
 	dev_dbg(dev, "Firmware Downloaded Successfully\n");
 
-	// Load command response addresses
+	/* Load command response addresses */
 	hw->fwcmdPostAddr = TS_Host2CpuSnd;
 	hw->fwcmdPostMbox = Hst2CpuMbx1;
 	hw->fwcmdRespMbox = Cpu2HstMbx1;
@@ -1945,7 +1947,7 @@ BC_STATUS crystalhd_link_do_fw_cmd(struct crystalhd_hw *hw, BC_FW_CMD *fw_cmd)
 
 	msleep_interruptible(50);
 
-	// FW commands should complete even if we got a signal from the upper layer
+	/* FW commands should complete even if we got a signal from the upper layer */
 	crystalhd_wait_on_event(&fw_cmd_event, hw->fwcmd_evt_sts,
 				20000, rc, true);
 
@@ -2044,13 +2046,13 @@ bool crystalhd_link_hw_interrupt_handle(struct crystalhd_adp *adp, struct crysta
 	return rc;
 }
 
-// Dummy private function
+/* Dummy private function */
 void crystalhd_link_notify_fll_change(struct crystalhd_hw *hw, bool bCleanupContext)
 {
 	return;
 }
 
-bool crystalhd_link_notify_event(struct crystalhd_hw *hw, BRCM_EVENT EventCode)
+bool crystalhd_link_notify_event(struct crystalhd_hw *hw, enum BRCM_EVENT EventCode)
 {
 	return true;
 }

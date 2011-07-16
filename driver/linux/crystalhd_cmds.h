@@ -46,6 +46,7 @@ enum _crystalhd_state{
 	BC_LINK_FMT_CHG		= 0x04,
 	BC_LINK_SUSPEND		= 0x10,
 	BC_LINK_PAUSED		= 0x20,
+	BC_LINK_RESUME		= 0x40,
 	BC_LINK_READY	= (BC_LINK_INIT | BC_LINK_CAP_EN | BC_LINK_FMT_CHG),
 };
 
@@ -65,17 +66,17 @@ struct crystalhd_cmd {
 	spinlock_t		ctx_lock;
 	uint32_t		tx_list_id;
 	uint32_t		cin_wait_exit;
-	uint32_t		pwr_state_change;
+	uint32_t		pwr_state_change; /* 0 is running, 1 is going to suspend, 2 is going to resume */
 	struct crystalhd_hw		*hw_ctx;
 };
 
 typedef BC_STATUS (*crystalhd_cmd_proc)(struct crystalhd_cmd *, crystalhd_ioctl_data *);
 
-typedef struct _crystalhd_cmd_tbl {
+struct crystalhd_cmd_tbl {
 	uint32_t		cmd_id;
 	const crystalhd_cmd_proc	cmd_proc;
 	uint32_t		block_mon;
-} crystalhd_cmd_tbl_t;
+};
 
 
 BC_STATUS crystalhd_suspend(struct crystalhd_cmd *ctx, crystalhd_ioctl_data *idata);
@@ -83,7 +84,6 @@ BC_STATUS crystalhd_resume(struct crystalhd_cmd *ctx);
 crystalhd_cmd_proc crystalhd_get_cmd_proc(struct crystalhd_cmd *ctx, uint32_t cmd,
 				      struct crystalhd_user *uc);
 BC_STATUS crystalhd_user_open(struct crystalhd_cmd *ctx, struct crystalhd_user **user_ctx);
-BC_STATUS crystalhd_user_close(struct crystalhd_cmd *ctx, struct crystalhd_user *uc);
 BC_STATUS crystalhd_setup_cmd_context(struct crystalhd_cmd *ctx, struct crystalhd_adp *adp);
 BC_STATUS crystalhd_delete_cmd_context(struct crystalhd_cmd *ctx);
 bool crystalhd_cmd_interrupt(struct crystalhd_cmd *ctx);

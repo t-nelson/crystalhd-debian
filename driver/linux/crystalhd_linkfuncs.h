@@ -98,7 +98,7 @@
 #define DecHt_HostSwReset	0x340000
 #define BC_DRAM_FW_CFG_ADDR	0x001c2000
 
-typedef union _link_intr_mask_reg_ {
+union intr_mask_reg {
 	struct {
 		uint32_t	mask_tx_done:1;
 		uint32_t	mask_tx_err:1;
@@ -112,9 +112,9 @@ typedef union _link_intr_mask_reg_ {
 
 	uint32_t	whole_reg;
 
-} intr_mask_reg;
+};
 
-typedef union _link_misc_perst_deco_ctrl_ {
+union link_misc_perst_deco_ctrl {
 	struct {
 		uint32_t	bcm7412_rst:1;		/* 1 -> BCM7412 is held in reset. Reset value 1.*/
 		uint32_t	reserved0:3;		/* Reserved.No Effect*/
@@ -124,9 +124,9 @@ typedef union _link_misc_perst_deco_ctrl_ {
 
 	uint32_t	whole_reg;
 
-} link_misc_perst_deco_ctrl;
+};
 
-typedef union _link_misc_perst_clk_ctrl_ {
+union link_misc_perst_clk_ctrl {
 	struct {
 		uint32_t	sel_alt_clk:1;	  /* When set, selects a 6.75MHz clock as the source of core_clk */
 		uint32_t	stop_core_clk:1;  /* When set, stops the branch of core_clk that is not needed for low power operation */
@@ -140,10 +140,10 @@ typedef union _link_misc_perst_clk_ctrl_ {
 
 	uint32_t	whole_reg;
 
-} link_misc_perst_clk_ctrl;
+};
 
 
-typedef union _link_misc_perst_decoder_ctrl_ {
+union link_misc_perst_decoder_ctrl {
 	struct {
 		uint32_t	bcm_7412_rst:1; /* 1 -> BCM7412 is held in reset. Reset value 1.*/
 		uint32_t	res0:3; /* Reserved.No Effect*/
@@ -153,7 +153,7 @@ typedef union _link_misc_perst_decoder_ctrl_ {
 
 	uint32_t	whole_reg;
 
-} link_misc_perst_decoder_ctrl;
+};
 
 /* DMA engine register BIT mask wrappers.. */
 #define DMA_START_BIT		MISC1_TX_SW_DESC_LIST_CTRL_STS_TX_DMA_RUN_STOP_MASK
@@ -187,11 +187,11 @@ void crystalhd_link_soft_rst(struct crystalhd_hw *hw);
 bool crystalhd_link_load_firmware_config(struct crystalhd_hw *hw);
 bool crystalhd_link_start_device(struct crystalhd_hw *hw);
 bool crystalhd_link_stop_device(struct crystalhd_hw *hw);
-uint32_t link_GetPicInfoLineNum(crystalhd_dio_req *dio, uint8_t *base);
-uint32_t link_GetMode422Data(crystalhd_dio_req *dio, PBC_PIC_INFO_BLOCK pPicInfoLine, int type);
-uint32_t link_GetMetaDataFromPib(crystalhd_dio_req *dio,	PBC_PIC_INFO_BLOCK pPicInfoLine);
-uint32_t link_GetHeightFromPib(crystalhd_dio_req *dio, PBC_PIC_INFO_BLOCK pPicInfoLine);
-bool link_GetPictureInfo(struct crystalhd_hw *hw, uint32_t picHeight, uint32_t picWidth, crystalhd_dio_req *dio,
+uint32_t link_GetPicInfoLineNum(struct crystalhd_dio_req *dio, uint8_t *base);
+uint32_t link_GetMode422Data(struct crystalhd_dio_req *dio, PBC_PIC_INFO_BLOCK pPicInfoLine, int type);
+uint32_t link_GetMetaDataFromPib(struct crystalhd_dio_req *dio,	PBC_PIC_INFO_BLOCK pPicInfoLine);
+uint32_t link_GetHeightFromPib(struct crystalhd_dio_req *dio, PBC_PIC_INFO_BLOCK pPicInfoLine);
+bool link_GetPictureInfo(struct crystalhd_hw *hw, uint32_t picHeight, uint32_t picWidth, struct crystalhd_dio_req *dio,
 								uint32_t *PicNumber, uint64_t *PicMetaData);
 uint32_t link_GetRptDropParam(struct crystalhd_hw *hw, uint32_t picHeight, uint32_t picWidth, void *pRxDMAReq);
 bool crystalhd_link_peek_next_decoded_frame(struct crystalhd_hw *hw, uint64_t *meta_payload, uint32_t *picNumFlags, uint32_t PicWidth);
@@ -205,12 +205,12 @@ BC_STATUS crystalhd_link_stop_tx_dma_engine(struct crystalhd_hw *hw);
 uint32_t crystalhd_link_get_pib_avail_cnt(struct crystalhd_hw *hw);
 uint32_t crystalhd_link_get_addr_from_pib_Q(struct crystalhd_hw *hw);
 bool crystalhd_link_rel_addr_to_pib_Q(struct crystalhd_hw *hw, uint32_t addr_to_rel);
-void link_cpy_pib_to_app(C011_PIB *src_pib, BC_PIC_INFO_BLOCK *dst_pib);
+void link_cpy_pib_to_app(struct C011_PIB *src_pib, BC_PIC_INFO_BLOCK *dst_pib);
 void crystalhd_link_proc_pib(struct crystalhd_hw *hw);
 void crystalhd_link_start_rx_dma_engine(struct crystalhd_hw *hw);
 void crystalhd_link_stop_rx_dma_engine(struct crystalhd_hw *hw);
-BC_STATUS crystalhd_link_hw_prog_rxdma(struct crystalhd_hw *hw, crystalhd_rx_dma_pkt *rx_pkt);
-BC_STATUS crystalhd_link_hw_post_cap_buff(struct crystalhd_hw *hw, crystalhd_rx_dma_pkt *rx_pkt);
+BC_STATUS crystalhd_link_hw_prog_rxdma(struct crystalhd_hw *hw, struct crystalhd_rx_dma_pkt *rx_pkt);
+BC_STATUS crystalhd_link_hw_post_cap_buff(struct crystalhd_hw *hw, struct crystalhd_rx_dma_pkt *rx_pkt);
 void crystalhd_link_get_dnsz(struct crystalhd_hw *hw, uint32_t list_index,
 									uint32_t *y_dw_dnsz, uint32_t *uv_dw_dnsz);
 void crystalhd_link_hw_finalize_pause(struct crystalhd_hw *hw);
@@ -224,5 +224,5 @@ BC_STATUS crystalhd_link_download_fw(struct crystalhd_hw* hw, uint8_t* buffer, u
 BC_STATUS crystalhd_link_do_fw_cmd(struct crystalhd_hw *hw, BC_FW_CMD *fw_cmd);
 bool crystalhd_link_hw_interrupt_handle(struct crystalhd_adp *adp, struct crystalhd_hw *hw);
 void crystalhd_link_notify_fll_change(struct crystalhd_hw *hw, bool bCleanupContext);
-bool crystalhd_link_notify_event(struct crystalhd_hw *hw, BRCM_EVENT EventCode);
+bool crystalhd_link_notify_event(struct crystalhd_hw *hw, enum BRCM_EVENT EventCode);
 #endif

@@ -63,10 +63,9 @@ static GstFlowReturn bcmdec_send_buff_detect_error(GstBcmDec *bcmdec, GstBuffer 
 						   guint32 offset, GstClockTime tCurrent,
 						   guint8 flags)
 {
-	BC_STATUS sts, suspend_sts = BC_STS_SUCCESS;
-	gboolean suspended = FALSE;
-	guint32 rll=0;
-	guint32 nextPicNumFlags = 0;
+	BC_STATUS sts = BC_STS_SUCCESS;
+
+	GST_DEBUG_OBJECT(bcmdec, "Attempting to Send Buffer");
 
 	sts = decif_send_buffer(&bcmdec->decif, pbuffer, size, tCurrent, flags);
 
@@ -75,34 +74,7 @@ static GstFlowReturn bcmdec_send_buff_detect_error(GstBcmDec *bcmdec, GstBuffer 
 		GST_ERROR_OBJECT(bcmdec, "Chain: timeStamp = %llu size = %d data = %p",
 				 GST_BUFFER_TIMESTAMP(buf), GST_BUFFER_SIZE(buf),
 				 GST_BUFFER_DATA (buf));
-		if ((sts == BC_STS_IO_USER_ABORT) || (sts == BC_STS_ERROR)) {
-			suspend_sts = decif_get_drv_status(&bcmdec->decif,&suspended, &rll, &nextPicNumFlags);
-			if (suspend_sts == BC_STS_SUCCESS) {
-				if (suspended) {
-					GST_DEBUG_OBJECT(bcmdec, "suspend status recv");
-					if (!bcmdec->suspend_mode)  {
-						bcmdec_suspend_callback(bcmdec);
-						bcmdec->suspend_mode = TRUE;
-						GST_DEBUG_OBJECT(bcmdec, "suspend done", sts);
-					}
-					if (bcmdec_resume_callback(bcmdec) == BC_STS_SUCCESS) {
-						GST_DEBUG_OBJECT(bcmdec, "resume done", sts);
-						bcmdec->suspend_mode = FALSE;
-						sts = decif_send_buffer(&bcmdec->decif, pbuffer, size, tCurrent, flags);
-						GST_ERROR_OBJECT(bcmdec, "proc input..2 sts = %d", sts);
-					} else {
-						GST_DEBUG_OBJECT(bcmdec, "resume failed", sts);
-					}
-				}
-				else if (sts == BC_STS_ERROR) {
-					GST_DEBUG_OBJECT(bcmdec, "device is not suspended");
-					//gst_buffer_unref (buf);
-					return GST_FLOW_ERROR;
-				}
-			} else {
-				GST_DEBUG_OBJECT(bcmdec, "decif_get_drv_status -- failed %d", sts);
-			}
-		}
+		return GST_FLOW_ERROR;
 	}
 
 	return GST_FLOW_OK;
@@ -127,13 +99,13 @@ GLB_INST_STS *g_inst_sts = NULL;
  *
  * describe the real formats here.
  */
-static GstStaticPadTemplate sink_factory_bcm70015 = GST_STATIC_PAD_TEMPLATE("sink", GST_PAD_SINK, GST_PAD_ALWAYS,
+GstStaticPadTemplate sink_factory_bcm70015 = GST_STATIC_PAD_TEMPLATE("sink", GST_PAD_SINK, GST_PAD_ALWAYS,
 		GST_STATIC_CAPS("video/mpeg, " "mpegversion = (int) {2, 4}," "systemstream =(boolean) false; "
 						"video/x-h264;" "video/x-vc1;" "video/x-wmv, " "wmvversion = (int) {3};"
 						"video/x-msmpeg, " "msmpegversion = (int) {43};"
 						"video/x-divx, " "divxversion = (int) {3, 4, 5};" "video/x-xvid;"));
 
-static GstStaticPadTemplate sink_factory_bcm70012 = GST_STATIC_PAD_TEMPLATE("sink", GST_PAD_SINK, GST_PAD_ALWAYS,
+GstStaticPadTemplate sink_factory_bcm70012 = GST_STATIC_PAD_TEMPLATE("sink", GST_PAD_SINK, GST_PAD_ALWAYS,
 		GST_STATIC_CAPS("video/mpeg, " "mpegversion = (int) {2}," "systemstream =(boolean) false; "
 						"video/x-h264;" "video/x-vc1;" "video/x-wmv, " "wmvversion = (int) {3};"));
 
@@ -162,10 +134,12 @@ static void gst_bcmdec_base_init(gpointer gclass)
 	static GstElementDetails element_details;
 	BC_HW_CAPS hwCaps;
 
+	GST_DEBUG_OBJECT(gclass, "gst_bcmdec_base_init");
+
 	element_details.klass = (gchar *)"Codec/Decoder/Video";
 	element_details.longname = (gchar *)"Generic Video Decoder";
 	element_details.description = (gchar *)"Decodes various Video Formats using CrystalHD Decoders";
-	element_details.author = (gchar *)"BRCM";
+	element_details.author = (gchar *)"Broadcom Corp.";
 
 	GstElementClass *element_class = GST_ELEMENT_CLASS(gclass);
 
@@ -173,8 +147,10 @@ static void gst_bcmdec_base_init(gpointer gclass)
 	decif_getcaps(NULL, &hwCaps);
 
 	gst_element_class_add_pad_template(element_class, gst_static_pad_template_get (&src_factory));
-	if(hwCaps.DecCaps & BC_DEC_FLAGS_M4P2)
+	if(hwCaps.DecCaps & BC_DEC_FLAGS_M4P2) {
+		GST_DEBUG_OBJECT(gclass, "Found M4P2 support");
 		gst_element_class_add_pad_template(element_class, gst_static_pad_template_get (&sink_factory_bcm70015));
+	}
 	else
 		gst_element_class_add_pad_template(element_class, gst_static_pad_template_get (&sink_factory_bcm70012));
 	gst_element_class_set_details(element_class, &element_details);
@@ -188,6 +164,8 @@ static void gst_bcmdec_class_init(GstBcmDecClass *klass)
 
 	gobject_class = (GObjectClass *)klass;
 	gstelement_class = (GstElementClass *)klass;
+
+	GST_DEBUG_OBJECT(klass, "gst_bcmdec_class_init");
 
 	gstelement_class->change_state = gst_bcmdec_change_state;
 
@@ -384,13 +362,7 @@ static gboolean gst_bcmdec_sink_event(GstPad* pad, GstEvent* event)
 
 static GstCaps *gst_bcmdec_getcaps (GstPad * pad)
 {
-	GstBcmDec *bcmdec;
-  	GstCaps *caps;
-	bcmdec = GST_BCMDEC(gst_pad_get_parent(pad));
-
-	caps = gst_caps_copy (gst_pad_get_pad_template_caps (pad));
-
-	return caps;
+	return gst_caps_copy (gst_pad_get_pad_template_caps (pad));
 }
 
 /* this function handles the link with other elements */
@@ -586,7 +558,17 @@ static gboolean gst_bcmdec_sink_set_caps(GstPad *pad, GstCaps *caps)
 						return FALSE;
 					}
 				}
-			} else {
+			}
+			else if(bcmdec->input_format == BC_MSUBTYPE_MPEG2VIDEO)
+			{
+				// For MPEG-2 don't need any additional codec_data is most cases
+				GST_DEBUG_OBJECT(bcmdec, "no codec_data for MPEG-2. Trying to decode anyway");
+			}
+			else if(bcmdec->input_format == BC_MSUBTYPE_DIVX){
+				// For DIVX don't need any additional codec_data is most cases
+				GST_DEBUG_OBJECT(bcmdec, "no codec_data for MPEG-4. Trying to decode anyway");
+			}
+			else {
 				GST_DEBUG_OBJECT(bcmdec, "no codec_data. Don't know how to handle");
 				gst_object_unref(bcmdec);
 				return FALSE;
@@ -636,7 +618,6 @@ static GstFlowReturn gst_bcmdec_chain(GstPad *pad, GstBuffer *buf)
 {
 	GstBcmDec *bcmdec;
 //	BC_STATUS sts = BC_STS_SUCCESS;
-	guint32 buf_sz = 0;
 	guint32 offset = 0;
 	GstClockTime tCurrent = 0;
 	guint8 *pbuffer;
@@ -667,7 +648,6 @@ static GstFlowReturn gst_bcmdec_chain(GstPad *pad, GstBuffer *buf)
 		}
 		tCurrent = GST_BUFFER_TIMESTAMP(buf);
 	}
-	buf_sz = GST_BUFFER_SIZE(buf);
 
 	if (bcmdec->play_pending) {
 		bcmdec->play_pending = FALSE;
@@ -709,7 +689,6 @@ static gboolean gst_bcmdec_src_event(GstPad *pad, GstEvent *event)
 static gboolean bcmdec_negotiate_format(GstBcmDec *bcmdec)
 {
 	GstCaps *caps;
-	guint32 fourcc;
 	gboolean result;
 	guint num = (guint)(bcmdec->output_params.framerate * 1000);
 	guint den = 1000;
@@ -718,10 +697,8 @@ static gboolean bcmdec_negotiate_format(GstBcmDec *bcmdec)
 	GstVideoFormat vidFmt;
 
 #ifdef YV12__
-	fourcc = GST_STR_FOURCC("YV12");
 	vidFmt = GST_VIDEO_FORMAT_YV12;
 #else
-	fourcc = GST_STR_FOURCC("YUY2");
 	vidFmt = GST_VIDEO_FORMAT_YUY2;
 #endif
 	GST_DEBUG_OBJECT(bcmdec, "framerate = %f", bcmdec->output_params.framerate);
@@ -802,8 +779,8 @@ static gboolean bcmdec_process_play(GstBcmDec *bcmdec)
 	bcInputFormat.Progressive =  !(bcmdec->interlace);
 	bcInputFormat.mSubtype= bcmdec->input_format;
 
-	//Use Demux Image Size for VC-1 Simple/Main
-	if(bcInputFormat.mSubtype == BC_MSUBTYPE_WMV3)
+	//Use Demux Image Size for VC-1 Simple/Main and for DIVX311
+	if(bcInputFormat.mSubtype == BC_MSUBTYPE_WMV3 || bcInputFormat.mSubtype == BC_MSUBTYPE_DIVX311)
 	{
 		//VC-1 Simple/Main
 		bcInputFormat.width = bcmdec->frame_width;
@@ -870,8 +847,6 @@ static GstStateChangeReturn gst_bcmdec_change_state(GstElement *element, GstStat
 	GstStateChangeReturn result = GST_STATE_CHANGE_SUCCESS;
 	GstBcmDec *bcmdec = GST_BCMDEC(element);
 	BC_STATUS sts = BC_STS_SUCCESS;
-	GstClockTime clock_time;
-	GstClockTime base_clock_time;
 	int ret = 0;
 
 	switch (transition) {
@@ -915,11 +890,14 @@ static GstStateChangeReturn gst_bcmdec_change_state(GstElement *element, GstStat
 		GST_DEBUG_OBJECT(bcmdec, "GST_STATE_CHANGE_PAUSED_TO_PLAYING");
 		bcmdec->gst_clock = gst_element_get_clock(element);
 		if (bcmdec->gst_clock) {
-			//printf("clock available %p\n",bcmdec->gst_clock);
+#if 0
+			GstClockTime clock_time, base_clock_time;
+			printf("clock available %p\n",bcmdec->gst_clock);
 			base_clock_time = gst_element_get_base_time(element);
-			//printf("base clock time %lld\n",base_clock_time);
+			printf("base clock time %lld\n",base_clock_time);
 			clock_time = gst_clock_get_time(bcmdec->gst_clock);
-			//printf(" clock time %lld\n",clock_time);
+			printf(" clock time %lld\n",clock_time);
+#endif
 		}
 		break;
 
@@ -1421,7 +1399,7 @@ static void * bcmdec_process_output(void *ctx)
 
 		GST_DEBUG_OBJECT(bcmdec, "wait over streaming = %d", bcmdec->streaming);
 		while (bcmdec->streaming && !bcmdec->last_picture_set) {
-			GST_DEBUG_OBJECT(bcmdec, "Getting Status\n");
+			GST_DEBUG_OBJECT(bcmdec, "Getting Status");
 			// NAREN FIXME - This is HARDCODED right now till we get HW PAUSE and RESUME working from the driver
 			uint32_t rll;
 			gboolean tmp;
@@ -1438,8 +1416,12 @@ static void * bcmdec_process_output(void *ctx)
 			}
 
 			if(rll == 0) {
-				usleep(3 * 1000);
-				continue;
+				GST_DEBUG_OBJECT(bcmdec, "No Picture Found");
+				usleep(5 * 1000);
+				// Check if there was an EOS signalled
+				decif_get_eos(&bcmdec->decif, &bEOS);
+				if(!bEOS)
+					continue;
 			}
 
 			guint8* data_ptr;
@@ -1504,6 +1486,22 @@ static void * bcmdec_process_output(void *ctx)
 					bcmdec->sec_field = FALSE;;
 					continue;
 				}
+			}
+			if (bEOS) {
+				if (gstbuf) {
+					gst_buffer_unref(gstbuf);
+					gstbuf = NULL;
+				}
+				if (gst_queue_element) {
+					gst_queue_element->gstbuf = NULL;
+					bcmdec_ins_buf(bcmdec, gst_queue_element);
+					gst_queue_element = NULL;
+				} else {
+					GST_DEBUG_OBJECT(bcmdec, "queue element failed");
+				}
+				GST_DEBUG_OBJECT(bcmdec, "last picture set ");
+				bcmdec->last_picture_set = TRUE;
+				continue;
 			}
 			sts = DtsProcOutput(bcmdec->decif.hdev, PROC_TIMEOUT, &pout);
 			GST_DEBUG_OBJECT(bcmdec, "procoutput status %d", sts);
@@ -2222,99 +2220,6 @@ static BC_STATUS bcmdec_insert_sps_pps(GstBcmDec *bcmdec, GstBuffer* gstbuf)
 	return sts;
 }
 
-static BC_STATUS bcmdec_suspend_callback(GstBcmDec *bcmdec)
-{
-	BC_STATUS sts = BC_STS_SUCCESS;
-	bcmdec_flush_gstbuf_queue(bcmdec);
-
-	bcmdec->base_time = 0;
-	if (bcmdec->decif.hdev)
-		sts = decif_close(&bcmdec->decif);
-	bcmdec->codec_params.inside_buffer = TRUE;
-	bcmdec->codec_params.consumed_offset = 0;
-	bcmdec->codec_params.strtcode_offset = 0;
-	bcmdec->codec_params.nal_sz = 0;
-	bcmdec->insert_pps = TRUE;
-
-	return sts;
-}
-
-static BC_STATUS bcmdec_resume_callback(GstBcmDec *bcmdec)
-{
-	BC_STATUS sts = BC_STS_SUCCESS;
-	BC_INPUT_FORMAT bcInputFormat;
-
-	sts = decif_open(&bcmdec->decif);
-	if (sts == BC_STS_SUCCESS) {
-		GST_DEBUG_OBJECT(bcmdec, "dev open success");
-	} else {
-		GST_ERROR_OBJECT(bcmdec, "dev open failed %d", sts);
-		return sts;
-	}
-
-	bcInputFormat.OptFlags = 0; // NAREN - FIXME - Should we enable BD mode and max frame rate mode for LINK?
-	bcInputFormat.FGTEnable = FALSE;
-	bcInputFormat.MetaDataEnable = FALSE;
-	bcInputFormat.Progressive =  !(bcmdec->interlace);
-	bcInputFormat.mSubtype= bcmdec->input_format;
-
-	//Use Demux Image Size for VC-1 Simple/Main
-	if(bcInputFormat.mSubtype == BC_MSUBTYPE_WMV3)
-	{
-		//VC-1 Simple/Main
-		bcInputFormat.width = bcmdec->frame_width;
-		bcInputFormat.height = bcmdec->frame_height;
-	}
-	else
-	{
-		bcInputFormat.width = bcmdec->output_params.width;
-		bcInputFormat.height = bcmdec->output_params.height;
-	}
-
-	bcInputFormat.startCodeSz = bcmdec->codec_params.nal_size_bytes;
-	bcInputFormat.pMetaData = bcmdec->codec_params.sps_pps_buf;
-	bcInputFormat.metaDataSz = bcmdec->codec_params.pps_size;
-	bcInputFormat.OptFlags = 0x80000000 | vdecFrameRate23_97;
-
-	sts = decif_setinputformat(&bcmdec->decif, bcInputFormat);
-	if (sts == BC_STS_SUCCESS) {
-		GST_DEBUG_OBJECT(bcmdec, "set input format success");
-	} else {
-		GST_ERROR_OBJECT(bcmdec, "set input format failed");
-		bcmdec->streaming = FALSE;
-		return sts;
-	}
-
-	sts = decif_prepare_play(&bcmdec->decif);
-	if (sts == BC_STS_SUCCESS) {
-		GST_DEBUG_OBJECT(bcmdec, "prepare play success");
-	} else {
-		GST_ERROR_OBJECT(bcmdec, "prepare play failed %d", sts);
-		bcmdec->streaming = FALSE;
-		return sts;
-	}
-
-	decif_setcolorspace(&bcmdec->decif, BUF_MODE);
-
-	sts = decif_start_play(&bcmdec->decif);
-	if (sts == BC_STS_SUCCESS) {
-		GST_DEBUG_OBJECT(bcmdec, "start play success");
-		bcmdec->streaming = TRUE;
-	} else {
-		GST_ERROR_OBJECT(bcmdec, "start play failed %d", sts);
-		bcmdec->streaming = FALSE;
-		return sts;
-	}
-
-	if (sem_post(&bcmdec->play_event) == -1)
-		GST_ERROR_OBJECT(bcmdec, "sem_post failed");
-
-	if (sem_post(&bcmdec->push_start_event) == -1)
-		GST_ERROR_OBJECT(bcmdec, "push_start post failed");
-
-	return sts;
-}
-
 static gboolean bcmdec_mul_inst_cor(GstBcmDec *bcmdec)
 {
 	struct timespec ts;
@@ -2555,13 +2460,13 @@ static void * bcmdec_process_get_rbuf(void *ctx)
 				if (!bcmdec->silent)
 					GST_DEBUG_OBJECT(bcmdec, "mbuf full == TRUE %u", bcmdec->gst_buf_que_sz);
 
-				usleep(1000 * 1000); // Sleep for a second since we have 350 buffers queued up
+				usleep(100 * 1000); // Sleep since we have buffers queued up
 				continue;
 			}
 
 			bufSz = bcmdec->output_params.width * bcmdec->output_params.height * BUF_MULT;
 
-			//GST_DEBUG_OBJECT(bcmdec, "process get rbuf gst_pad_alloc_buffer_and_set_caps ....");
+			GST_DEBUG_OBJECT(bcmdec, "process get rbuf gst_pad_alloc_buffer_and_set_caps ....");
 			ret = gst_pad_alloc_buffer_and_set_caps(bcmdec->srcpad, GST_BUFFER_OFFSET_NONE,
 								bufSz, GST_PAD_CAPS(bcmdec->srcpad), &gstbuf);
 			if (ret != GST_FLOW_OK) {
@@ -2766,7 +2671,5 @@ static gboolean plugin_init(GstPlugin *bcmdec)
 }
 
 /* gstreamer looks for this structure to register bcmdec */
-GST_PLUGIN_DEFINE(GST_VERSION_MAJOR, GST_VERSION_MINOR,
-		  "bcmdec", "Video decoder", plugin_init, VERSION,
-		  "LGPL", "bcmdec", "http://broadcom.com/")
+GST_PLUGIN_DEFINE(GST_VERSION_MAJOR, GST_VERSION_MINOR, "bcmdec", "Video decoder", plugin_init, VERSION, "LGPL", "bcmdec", "http://broadcom.com/")
 

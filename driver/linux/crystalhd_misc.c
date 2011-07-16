@@ -30,14 +30,14 @@
 #include "crystalhd_lnx.h"
 #include "crystalhd_misc.h"
 
-// Some HW specific code defines
+/* Some HW specific code defines */
 extern uint32_t link_GetRptDropParam(struct crystalhd_hw *hw, uint32_t picHeight, uint32_t picWidth, void *);
 extern uint32_t flea_GetRptDropParam(struct crystalhd_hw *hw, void *);
 
-static crystalhd_dio_req *crystalhd_alloc_dio(struct crystalhd_adp *adp)
+static struct crystalhd_dio_req *crystalhd_alloc_dio(struct crystalhd_adp *adp)
 {
 	unsigned long flags = 0;
-	crystalhd_dio_req *temp = NULL;
+	struct crystalhd_dio_req *temp = NULL;
 
 	if (!adp) {
 		printk(KERN_ERR "%s: Invalid arg\n", __func__);
@@ -53,7 +53,7 @@ static crystalhd_dio_req *crystalhd_alloc_dio(struct crystalhd_adp *adp)
 	return temp;
 }
 
-static void crystalhd_free_dio(struct crystalhd_adp *adp, crystalhd_dio_req *dio)
+static void crystalhd_free_dio(struct crystalhd_adp *adp, struct crystalhd_dio_req *dio)
 {
 	unsigned long flags = 0;
 
@@ -69,10 +69,10 @@ static void crystalhd_free_dio(struct crystalhd_adp *adp, crystalhd_dio_req *dio
 	spin_unlock_irqrestore(&adp->lock, flags);
 }
 
-static crystalhd_elem_t *crystalhd_alloc_elem(struct crystalhd_adp *adp)
+static struct crystalhd_elem *crystalhd_alloc_elem(struct crystalhd_adp *adp)
 {
 	unsigned long flags = 0;
-	crystalhd_elem_t *temp = NULL;
+	struct crystalhd_elem *temp = NULL;
 
 	if (!adp)
 	{
@@ -90,7 +90,7 @@ static crystalhd_elem_t *crystalhd_alloc_elem(struct crystalhd_adp *adp)
 
 	return temp;
 }
-static void crystalhd_free_elem(struct crystalhd_adp *adp, crystalhd_elem_t *elem)
+static void crystalhd_free_elem(struct crystalhd_adp *adp, struct crystalhd_elem *elem)
 {
 	unsigned long flags = 0;
 
@@ -282,10 +282,10 @@ void bc_kern_dma_free(struct crystalhd_adp *adp, uint32_t sz, void *ka,
  * will be used to free elements while deleting the queue.
  */
 BC_STATUS crystalhd_create_dioq(struct crystalhd_adp *adp,
-			      crystalhd_dioq_t **dioq_hnd,
+			      struct crystalhd_dioq **dioq_hnd,
 			      crystalhd_data_free_cb cb, void *cbctx)
 {
-	crystalhd_dioq_t *dioq = NULL;
+	struct crystalhd_dioq *dioq = NULL;
 
 	if (!adp || !dioq_hnd) {
 		printk(KERN_ERR "%s: Invalid arg\n", __func__);
@@ -298,8 +298,8 @@ BC_STATUS crystalhd_create_dioq(struct crystalhd_adp *adp,
 
 	spin_lock_init(&dioq->lock);
 	dioq->sig = BC_LINK_DIOQ_SIG;
-	dioq->head = (crystalhd_elem_t *)&dioq->head;
-	dioq->tail = (crystalhd_elem_t *)&dioq->head;
+	dioq->head = (struct crystalhd_elem *)&dioq->head;
+	dioq->tail = (struct crystalhd_elem *)&dioq->head;
 	crystalhd_create_event(&dioq->event);
 	dioq->adp = adp;
 	dioq->data_rel_cb = cb;
@@ -322,7 +322,7 @@ BC_STATUS crystalhd_create_dioq(struct crystalhd_adp *adp,
  * by calling the call back provided during creation.
  *
  */
-void crystalhd_delete_dioq(struct crystalhd_adp *adp, crystalhd_dioq_t *dioq)
+void crystalhd_delete_dioq(struct crystalhd_adp *adp, struct crystalhd_dioq *dioq)
 {
 	void *temp;
 
@@ -350,11 +350,11 @@ void crystalhd_delete_dioq(struct crystalhd_adp *adp, crystalhd_dioq_t *dioq)
  *
  * Insert new element to Q tail.
  */
-BC_STATUS crystalhd_dioq_add(crystalhd_dioq_t *ioq, void *data,
+BC_STATUS crystalhd_dioq_add(struct crystalhd_dioq *ioq, void *data,
 			   bool wake, uint32_t tag)
 {
 	unsigned long flags = 0;
-	crystalhd_elem_t *tmp;
+	struct crystalhd_elem *tmp;
 
 	if (!ioq || (ioq->sig != BC_LINK_DIOQ_SIG) || !data) {
 		dev_err(chddev(), "%s: Invalid arg\n", __func__);
@@ -370,7 +370,7 @@ BC_STATUS crystalhd_dioq_add(crystalhd_dioq_t *ioq, void *data,
 	tmp->data = data;
 	tmp->tag = tag;
 	spin_lock_irqsave(&ioq->lock, flags);
-	tmp->flink = (crystalhd_elem_t *)&ioq->head;
+	tmp->flink = (struct crystalhd_elem *)&ioq->head;
 	tmp->blink = ioq->tail;
 	tmp->flink->blink = tmp;
 	tmp->blink->flink = tmp;
@@ -392,21 +392,25 @@ BC_STATUS crystalhd_dioq_add(crystalhd_dioq_t *ioq, void *data,
  *
  * Remove an element from Queue.
  */
-void *crystalhd_dioq_fetch(crystalhd_dioq_t *ioq)
+void *crystalhd_dioq_fetch(struct crystalhd_dioq *ioq)
 {
 	unsigned long flags = 0;
-	crystalhd_elem_t *tmp;
-	crystalhd_elem_t *ret = NULL;
+	struct crystalhd_elem *tmp;
+	struct crystalhd_elem *ret = NULL;
 	void *data = NULL;
 
 	if (!ioq || (ioq->sig != BC_LINK_DIOQ_SIG)) {
 		dev_err(chddev(), "%s: Invalid arg\n", __func__);
+		if(!ioq)
+			dev_err(chddev(), "ioq not initialized\n");
+		else
+			dev_err(chddev(), "ioq invalid signature\n");
 		return data;
 	}
 
 	spin_lock_irqsave(&ioq->lock, flags);
 	tmp = ioq->head;
-	if (tmp != (crystalhd_elem_t *)&ioq->head) {
+	if (tmp != (struct crystalhd_elem *)&ioq->head) {
 		ret = tmp;
 		tmp->flink->blink = tmp->blink;
 		tmp->blink->flink = tmp->flink;
@@ -430,11 +434,11 @@ void *crystalhd_dioq_fetch(crystalhd_dioq_t *ioq)
  *
  * Search TAG and remove the element.
  */
-void *crystalhd_dioq_find_and_fetch(crystalhd_dioq_t *ioq, uint32_t tag)
+void *crystalhd_dioq_find_and_fetch(struct crystalhd_dioq *ioq, uint32_t tag)
 {
 	unsigned long flags = 0;
-	crystalhd_elem_t *tmp;
-	crystalhd_elem_t *ret = NULL;
+	struct crystalhd_elem *tmp;
+	struct crystalhd_elem *ret = NULL;
 	void *data = NULL;
 
 	if (!ioq || (ioq->sig != BC_LINK_DIOQ_SIG)) {
@@ -444,7 +448,7 @@ void *crystalhd_dioq_find_and_fetch(crystalhd_dioq_t *ioq, uint32_t tag)
 
 	spin_lock_irqsave(&ioq->lock, flags);
 	tmp = ioq->head;
-	while (tmp != (crystalhd_elem_t *)&ioq->head) {
+	while (tmp != (struct crystalhd_elem *)&ioq->head) {
 		if (tmp->tag == tag) {
 			ret = tmp;
 			tmp->flink->blink = tmp->blink;
@@ -481,8 +485,8 @@ void *crystalhd_dioq_fetch_wait(struct crystalhd_hw *hw, uint32_t to_secs, uint3
 	unsigned long flags = 0;
 	int rc = 0;
 
-	crystalhd_rx_dma_pkt *r_pkt = NULL;
-	crystalhd_dioq_t *ioq = hw->rx_rdyq;
+	struct crystalhd_rx_dma_pkt *r_pkt = NULL;
+	struct crystalhd_dioq *ioq = hw->rx_rdyq;
 	uint32_t picYcomp = 0;
 
 	unsigned long fetchTimeout = jiffies + msecs_to_jiffies(to_secs * 1000);
@@ -502,30 +506,30 @@ void *crystalhd_dioq_fetch_wait(struct crystalhd_hw *hw, uint32_t to_secs, uint3
 		else
 			spin_unlock_irqrestore(&ioq->lock, flags);
 		if (rc == 0) {
-			// Found a packet. Check if it is a repeated picture or not
-			// Drop the picture if it is a repeated picture
-			// Lock against checks from get status calls
+			/* Found a packet. Check if it is a repeated picture or not */
+			/* Drop the picture if it is a repeated picture */
+			/* Lock against checks from get status calls */
 			if(down_interruptible(&hw->fetch_sem))
 				goto sem_error;
 			r_pkt = crystalhd_dioq_fetch(ioq);
-			// If format change packet, then return with out checking anything
+			/* If format change packet, then return with out checking anything */
 			if (r_pkt->flags & (COMP_FLAG_PIB_VALID | COMP_FLAG_FMT_CHANGE))
 				goto sem_rel_return;
 			if (hw->adp->pdev->device == BC_PCI_DEVID_LINK) {
 				picYcomp = link_GetRptDropParam(hw, hw->PICHeight, hw->PICWidth, (void *)r_pkt);
 			}
 			else {
-				// For Flea, we don't have the width and height handy since they
-				// come in the PIB in the picture, so this function will also
-				// populate the width and height
+				/* For Flea, we don't have the width and height handy since they */
+				/* come in the PIB in the picture, so this function will also */
+				/* populate the width and height */
 				picYcomp = flea_GetRptDropParam(hw, (void *)r_pkt);
-				// For flea it is the above function that indicated format change
+				/* For flea it is the above function that indicated format change */
 				if(r_pkt->flags & (COMP_FLAG_PIB_VALID | COMP_FLAG_FMT_CHANGE))
 					goto sem_rel_return;
 			}
 			if(!picYcomp || (picYcomp == hw->LastPicNo) ||
 				(picYcomp == hw->LastTwoPicNo)) {
-				//Discard picture
+				/*Discard picture */
 				if(picYcomp != 0) {
 					hw->LastTwoPicNo = hw->LastPicNo;
 					hw->LastPicNo = picYcomp;
@@ -578,10 +582,10 @@ sem_rel_return:
 BC_STATUS crystalhd_map_dio(struct crystalhd_adp *adp, void *ubuff,
 			  uint32_t ubuff_sz, uint32_t uv_offset,
 			  bool en_422mode, bool dir_tx,
-			  crystalhd_dio_req **dio_hnd)
+			  struct crystalhd_dio_req **dio_hnd)
 {
 	struct device *dev;
-	crystalhd_dio_req	*dio;
+	struct crystalhd_dio_req	*dio;
 	uint32_t start = 0, end = 0, count = 0;
 	uint32_t spsz = 0;
 	unsigned long uaddr = 0, uv_start = 0;
@@ -730,7 +734,7 @@ BC_STATUS crystalhd_map_dio(struct crystalhd_adp *adp, void *ubuff,
  *
  * This routine is to unmap the user buffer pages.
  */
-BC_STATUS crystalhd_unmap_dio(struct crystalhd_adp *adp, crystalhd_dio_req *dio)
+BC_STATUS crystalhd_unmap_dio(struct crystalhd_adp *adp, struct crystalhd_dio_req *dio)
 {
 	struct page *page = NULL;
 	int j = 0;
@@ -775,7 +779,7 @@ int crystalhd_create_dio_pool(struct crystalhd_adp *adp, uint32_t max_pages)
 	struct device *dev;
 	uint32_t asz = 0, i = 0;
 	uint8_t	*temp;
-	crystalhd_dio_req *dio;
+	struct crystalhd_dio_req *dio;
 
 	if (!adp || !max_pages) {
 		printk(KERN_ERR "%s: Invalid arg\n", __func__);
@@ -800,13 +804,13 @@ int crystalhd_create_dio_pool(struct crystalhd_adp *adp, uint32_t max_pages)
 		BC_LINK_SG_POOL_SZ, max_pages, asz, adp->fill_byte_pool);
 
 	for (i = 0; i < BC_LINK_SG_POOL_SZ; i++) {
-		temp = (uint8_t *)kzalloc(asz, GFP_KERNEL);
+		temp = kzalloc(asz, GFP_KERNEL);
 		if ((temp) == NULL) {
 			dev_err(dev, "Failed to alloc %d mem\n", asz);
 			return -ENOMEM;
 		}
 
-		dio = (crystalhd_dio_req *)temp;
+		dio = (struct crystalhd_dio_req *)temp;
 		temp += sizeof(*dio);
 		dio->pages = (struct page **)temp;
 		temp += (sizeof(*dio->pages) * max_pages);
@@ -836,7 +840,7 @@ int crystalhd_create_dio_pool(struct crystalhd_adp *adp, uint32_t max_pages)
  */
 void crystalhd_destroy_dio_pool(struct crystalhd_adp *adp)
 {
-	crystalhd_dio_req *dio;
+	struct crystalhd_dio_req *dio;
 	int count = 0;
 
 	if (!adp) {
@@ -878,7 +882,7 @@ int crystalhd_create_elem_pool(struct crystalhd_adp *adp,
 		uint32_t pool_size)
 {
 	uint32_t i;
-	crystalhd_elem_t *temp;
+	struct crystalhd_elem *temp;
 
 	if (!adp || !pool_size)
 		return -EINVAL;
@@ -906,7 +910,7 @@ int crystalhd_create_elem_pool(struct crystalhd_adp *adp,
  */
 void crystalhd_delete_elem_pool(struct crystalhd_adp *adp)
 {
-	crystalhd_elem_t *temp;
+	struct crystalhd_elem *temp;
 	int dbg_cnt = 0;
 
 	if (!adp)

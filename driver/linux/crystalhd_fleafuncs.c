@@ -32,7 +32,6 @@
 #include "crystalhd_hw.h"
 #include "crystalhd_fleafuncs.h"
 #include "crystalhd_lnx.h"
-#include "bc_defines.h"
 #include "FleaDefs.h"
 #include "crystalhd_flea_ddr.h"
 
@@ -80,7 +79,7 @@ void crystalhd_flea_core_reset(struct crystalhd_hw *hw)
 
 void crystalhd_flea_disable_interrupts(struct crystalhd_hw *hw)
 {
-	FLEA_MASK_REG IntrMaskReg;
+	union FLEA_INTR_BITS_COMMON IntrMaskReg;
 	/*
 	-- Mask everything except the reserved bits.
 	*/
@@ -97,7 +96,7 @@ void crystalhd_flea_disable_interrupts(struct crystalhd_hw *hw)
 
 void crystalhd_flea_enable_interrupts(struct crystalhd_hw *hw)
 {
-	FLEA_MASK_REG IntrMaskReg;
+	union FLEA_INTR_BITS_COMMON IntrMaskReg;
 	/*
 	-- Clear The Mask for everything except the reserved bits.
 	*/
@@ -114,7 +113,7 @@ void crystalhd_flea_enable_interrupts(struct crystalhd_hw *hw)
 
 void crystalhd_flea_clear_interrupts(struct crystalhd_hw *hw)
 {
-	FLEA_INTR_STS_REG	IntrStsValue;
+	union FLEA_INTR_BITS_COMMON	IntrStsValue;
 
 	IntrStsValue.WholeReg = hw->pfnReadDevRegister(hw->adp, BCHP_INTR_INTR_STATUS);
 
@@ -172,17 +171,17 @@ void crystalhd_flea_init_dram(struct crystalhd_hw *hw)
 	uint32_t sd_1_col_size, sd_1_bank_size, sd_1_row_size;
 	uint32_t ddr3_mode[2];
 	uint32_t regVal;
-	bool bDDR3Detected=false; //Should be filled in using the detection logic. Default to DDR2
+	bool bDDR3Detected=false; /*Should be filled in using the detection logic. Default to DDR2 */
 
-	// On all designs we are using DDR2 or DDR3 x16 and running at a max of 400Mhz
-	// Only one bank of DDR supported. The other is a dummy
+	/* On all designs we are using DDR2 or DDR3 x16 and running at a max of 400Mhz */
+	/* Only one bank of DDR supported. The other is a dummy */
 
 	ddr2_speed_grade[0] = DDR2_400MHZ;
 	ddr2_speed_grade[1] = DDR2_400MHZ;
 	sd_0_col_size = COL_BITS_10;
 	sd_0_bank_size = BANK_SIZE_8;
-	sd_0_row_size = ROW_SIZE_8K; // DDR2
-	//	sd_0_row_size = ROW_SIZE_16K; // DDR3
+	sd_0_row_size = ROW_SIZE_8K; /* DDR2 */
+	/*	sd_0_row_size = ROW_SIZE_16K; // DDR3 */
 	sd_1_col_size = COL_BITS_10;
 	sd_1_bank_size = BANK_SIZE_8;
 	sd_1_row_size = ROW_SIZE_8K;
@@ -193,24 +192,24 @@ void crystalhd_flea_init_dram(struct crystalhd_hw *hw)
 	if(bDDR3Detected)
 	{
 		ddr3_mode[0] = 1;
-		sd_0_row_size = ROW_SIZE_16K; // DDR3
-		sd_1_row_size = ROW_SIZE_16K; // DDR3
+		sd_0_row_size = ROW_SIZE_16K; /* DDR3 */
+		sd_1_row_size = ROW_SIZE_16K; /* DDR3 */
 
 	}
 
-	// Step 1. PLL Init
-	crystalhd_flea_ddr_pll_config(hw, ddr2_speed_grade, 1, 0); // only need to configure PLLs in TM0
+	/* Step 1. PLL Init */
+	crystalhd_flea_ddr_pll_config(hw, ddr2_speed_grade, 1, 0); /* only need to configure PLLs in TM0 */
 
-	// Step 2. DDR CTRL Init
+	/* Step 2. DDR CTRL Init */
 	crystalhd_flea_ddr_ctrl_init(hw, 0, ddr3_mode[0], ddr2_speed_grade[0], sd_0_col_size, sd_0_bank_size, sd_0_row_size, 0);
 
-	// Step 3 RTS Init - Real time scheduling memory arbiter
+	/* Step 3 RTS Init - Real time scheduling memory arbiter */
 	crystalhd_flea_ddr_arb_rts_init(hw);
 
-	// NAREN turn off ODT. The REF1 and SV1 and most customer designs allow this.
-	// IF SOMEONE COMPLAINS ABOUT MEMORY OR DATA CORRUPTION LOOK HERE FIRST
+	/* NAREN turn off ODT. The REF1 and SV1 and most customer designs allow this. */
+	/* IF SOMEONE COMPLAINS ABOUT MEMORY OR DATA CORRUPTION LOOK HERE FIRST */
 
-	//hw->pfnWriteDevRegister(hw->adp, BCHP_DDR23_CTL_REGS_0_LOAD_EMODE_CMD, 0x02, false);
+	/*hw->pfnWriteDevRegister(hw->adp, BCHP_DDR23_CTL_REGS_0_LOAD_EMODE_CMD, 0x02, false); */
 
 	/*regVal = hw->pfnReadDevRegister(hw->adp, BCHP_DDR23_CTL_REGS_0_PARAMS3);
 	regVal &= ~(BCHP_DDR23_CTL_REGS_0_PARAMS3_wr_odt_en_MASK);
@@ -249,7 +248,7 @@ uint32_t crystalhd_flea_reg_rd(struct crystalhd_adp *adp, uint32_t reg_off)
 		return 0;
 	}
 
-	if(baseAddr == 0 || baseAddr == FLEA_GISB_DIRECT_BASE) // Direct Mapped Region
+	if(baseAddr == 0 || baseAddr == FLEA_GISB_DIRECT_BASE) /* Direct Mapped Region */
 	{
 		regAddr = adp->i2o_addr + (reg_off & 0x0000FFFF);
 		if(regAddr > (adp->i2o_addr + adp->pci_i2o_len)) {
@@ -259,7 +258,7 @@ uint32_t crystalhd_flea_reg_rd(struct crystalhd_adp *adp, uint32_t reg_off)
 		}
 		return readl(regAddr);
 	}
-	else // non directly mapped region
+	else /* non directly mapped region */
 	{
 		if(adp->pci_i2o_len < 0xFFFF) {
 			printk("Un-expected mapped region size\n");
@@ -282,7 +281,7 @@ void crystalhd_flea_reg_wr(struct crystalhd_adp *adp, uint32_t reg_off, uint32_t
 		return;
 	}
 
-	if(baseAddr == 0 || baseAddr == FLEA_GISB_DIRECT_BASE) // Direct Mapped Region
+	if(baseAddr == 0 || baseAddr == FLEA_GISB_DIRECT_BASE) /* Direct Mapped Region */
 	{
 		regAddr = adp->i2o_addr + (reg_off & 0x0000FFFF);
 		if(regAddr > (adp->i2o_addr + adp->pci_i2o_len)) {
@@ -292,7 +291,7 @@ void crystalhd_flea_reg_wr(struct crystalhd_adp *adp, uint32_t reg_off, uint32_t
 		}
 		writel(val, regAddr);
 	}
-	else // non directly mapped region
+	else /* non directly mapped region */
 	{
 		if(adp->pci_i2o_len < 0xFFFF) {
 			printk("Un-expected mapped region size\n");
@@ -329,7 +328,7 @@ BC_STATUS crystalhd_flea_mem_rd(struct crystalhd_hw *hw, uint32_t start_off,
 	}
 
 	if( hw->FleaPowerState == FLEA_PS_LP_COMPLETE ) {
-		//printk(KERN_ERR "%s: Flea power down, cann't read memory.\n", __func__);
+		/*printk(KERN_ERR "%s: Flea power down, cann't read memory.\n", __func__); */
 		return BC_STS_BUSY;
 	}
 
@@ -345,7 +344,7 @@ BC_STATUS crystalhd_flea_mem_rd(struct crystalhd_hw *hw, uint32_t start_off,
 	for (ix = 0; ix < dw_cnt; ix++) {
 		rd_buff[ix] = readl(hw->adp->mem_addr + (addr & ~BCHP_MISC2_DIRECT_WINDOW_CONTROL_DIRECT_WINDOW_BASE_ADDR_MASK));
 		base = addr & BCHP_MISC2_DIRECT_WINDOW_CONTROL_DIRECT_WINDOW_BASE_ADDR_MASK;
-		addr += 4; // DWORD access at all times
+		addr += 4; /* DWORD access at all times */
 		if (base != (addr & BCHP_MISC2_DIRECT_WINDOW_CONTROL_DIRECT_WINDOW_BASE_ADDR_MASK)) {
 			/* Set the base addr for next 512kb window */
 			hw->pfnWriteDevRegister(hw->adp, BCHP_MISC2_DIRECT_WINDOW_CONTROL,
@@ -380,7 +379,7 @@ BC_STATUS crystalhd_flea_mem_wr(struct crystalhd_hw *hw, uint32_t start_off,
 	}
 
 	if( hw->FleaPowerState == FLEA_PS_LP_COMPLETE ) {
-		//printk(KERN_ERR "%s: Flea power down, cann't write memory.\n", __func__);
+		/*printk(KERN_ERR "%s: Flea power down, cann't write memory.\n", __func__); */
 		return BC_STS_BUSY;
 	}
 
@@ -396,7 +395,7 @@ BC_STATUS crystalhd_flea_mem_wr(struct crystalhd_hw *hw, uint32_t start_off,
 	for (ix = 0; ix < dw_cnt; ix++) {
 		writel(wr_buff[ix], hw->adp->mem_addr + (addr & ~BCHP_MISC2_DIRECT_WINDOW_CONTROL_DIRECT_WINDOW_BASE_ADDR_MASK));
 		base = addr & BCHP_MISC2_DIRECT_WINDOW_CONTROL_DIRECT_WINDOW_BASE_ADDR_MASK;
-		addr += 4; // DWORD access at all times
+		addr += 4; /* DWORD access at all times */
 		if (base != (addr & BCHP_MISC2_DIRECT_WINDOW_CONTROL_DIRECT_WINDOW_BASE_ADDR_MASK)) {
 			/* Set the base addr for next 512kb window */
 			hw->pfnWriteDevRegister(hw->adp, BCHP_MISC2_DIRECT_WINDOW_CONTROL,
@@ -421,15 +420,15 @@ void crystalhd_flea_runtime_power_up(struct crystalhd_hw *hw)
 	long totalTick_Hi_f;
 	long TickSpentInPD_Hi_f;
 
-	//printk("RT PU \n");
+	/*printk("RT PU \n"); */
 
-	// NAREN This function restores clocks and power to the DRAM and to the core to bring the decoder back up to full operation
+	/* NAREN This function restores clocks and power to the DRAM and to the core to bring the decoder back up to full operation */
 	/* Start the DRAM controller clocks first */
 	regVal = hw->pfnReadDevRegister(hw->adp, BCHP_CLK_PM_CTRL);
 	regVal &= ~(BCHP_CLK_PM_CTRL_DIS_DDR_108_CLK_MASK |	BCHP_CLK_PM_CTRL_DIS_DDR_216_CLK_MASK);
 	hw->pfnWriteDevRegister(hw->adp, BCHP_CLK_PM_CTRL, regVal);
 
-	// Delay to allow the DRAM clock to stabilize
+	/* Delay to allow the DRAM clock to stabilize */
 	udelay(25);
 
 	/* Power Up PHY and start clocks on DRAM device */
@@ -444,7 +443,7 @@ void crystalhd_flea_runtime_power_up(struct crystalhd_hw *hw)
 	hw->pfnWriteDevRegister(hw->adp, BCHP_DDR23_PHY_CONTROL_REGS_CLK_PM_CTRL,
 		~(BCHP_DDR23_PHY_CONTROL_REGS_CLK_PM_CTRL_DIS_DDR_CLK_MASK));
 
-	// Delay to allow the PLL to lock
+	/* Delay to allow the PLL to lock */
 	udelay(25);
 
 	regVal = hw->pfnReadDevRegister(hw->adp, BCHP_DDR23_PHY_CONTROL_REGS_IDLE_PAD_CONTROL);
@@ -499,16 +498,16 @@ void crystalhd_flea_runtime_power_up(struct crystalhd_hw *hw)
 
 #ifdef _POWER_HANDLE_AVD_WATCHDOG_
 	/* Restore Watchdog timers */
-	// Make sure the timeouts do not happen
-	//Outer Loop Watchdog timer
+	/* Make sure the timeouts do not happen */
+	/*Outer Loop Watchdog timer */
 	hw->pfnWriteDevRegister(hw->adp, BCHP_DECODE_CPUREGS_0_REG_WATCHDOG_TMR, hw->OLWatchDogTimer);
 
-	////Inner Loop Watchdog timer
+	/*//Inner Loop Watchdog timer */
 	hw->pfnWriteDevRegister(hw->adp, BCHP_DECODE_CPUREGS2_0_REG_WATCHDOG_TMR, hw->ILWatchDogTimer);
 
 #endif
 
-	//printk("RT Power Up Flea Complete\n");
+	/*printk("RT Power Up Flea Complete\n"); */
 
 	rdtscll(currTick);
 
@@ -541,21 +540,21 @@ void crystalhd_flea_runtime_power_up(struct crystalhd_hw *hw)
 	else
 		hw->PDRatio = (TickSpentInPD_Hi_f * 100) / totalTick_Hi_f;
 
-	//printk("Ticks currently spent in PD: 0x%llx Total: 0x%llx Ratio %d,\n",
-	//	hw->TickSpentInPD, (currTick - hw->TickCntDecodePU), hw->PDRatio);
+	/*printk("Ticks currently spent in PD: 0x%llx Total: 0x%llx Ratio %d,\n", */
+	/*	hw->TickSpentInPD, (currTick - hw->TickCntDecodePU), hw->PDRatio); */
 
 	/* NAREN check if the PD ratio is greater than 75. If so, try to increase the PauseThreshold to improve the ratio */
 	/* never go higher than the default threshold */
 	if((hw->PDRatio > 75) && (hw->PauseThreshold < hw->DefaultPauseThreshold))
 	{
-		//printk("Current PDRatio:%u, PauseThreshold:%u, DefaultPauseThreshold:%u, incress PauseThreshold.\n",
-		//		hw->PDRatio, hw->PauseThreshold, hw->DefaultPauseThreshold);
+		/*printk("Current PDRatio:%u, PauseThreshold:%u, DefaultPauseThreshold:%u, incress PauseThreshold.\n", */
+		/*		hw->PDRatio, hw->PauseThreshold, hw->DefaultPauseThreshold); */
 		hw->PauseThreshold++;
 	}
 	else
 	{
-		//printk("Current PDRatio:%u, PauseThreshold:%u, DefaultPauseThreshold:%u, don't incress PauseThreshold.\n",
-		//		hw->PDRatio, hw->PauseThreshold, hw->DefaultPauseThreshold);
+		/*printk("Current PDRatio:%u, PauseThreshold:%u, DefaultPauseThreshold:%u, don't incress PauseThreshold.\n", */
+		/*		hw->PDRatio, hw->PauseThreshold, hw->DefaultPauseThreshold); */
 	}
 
 	return;
@@ -567,17 +566,17 @@ void crystalhd_flea_runtime_power_dn(struct crystalhd_hw *hw)
 	uint32_t regVal;
 	uint32_t pollCnt;
 
-	//printk("RT PD \n");
+	/*printk("RT PD \n"); */
 
 	hw->DrvPauseCnt++;
 
-	// NAREN This function stops the decoder clocks including the AVD, ARM and DRAM
-	// It powers down the DRAM device and places the DRAM into self-refresh
+	/* NAREN This function stops the decoder clocks including the AVD, ARM and DRAM */
+	/* It powers down the DRAM device and places the DRAM into self-refresh */
 
 #ifdef _POWER_HANDLE_AVD_WATCHDOG_
-	// Make sure the timeouts do not happen
-	// Because the AVD drops to a debug prompt and stops decoding if it hits any watchdogs
-	//Outer Loop Watchdog timer
+	/* Make sure the timeouts do not happen */
+	/* Because the AVD drops to a debug prompt and stops decoding if it hits any watchdogs */
+	/*Outer Loop Watchdog timer */
 	regVal = hw->pfnReadDevRegister(hw->adp,
 		BCHP_DECODE_CPUREGS_0_REG_WATCHDOG_TMR);
 
@@ -586,7 +585,7 @@ void crystalhd_flea_runtime_power_dn(struct crystalhd_hw *hw)
 		BCHP_DECODE_CPUREGS_0_REG_WATCHDOG_TMR,
 		0xffffffff);
 
-	//Inner Loop Watchdog timer
+	/*Inner Loop Watchdog timer */
 	regVal = hw->pfnReadDevRegister(hw->adp,
 		BCHP_DECODE_CPUREGS2_0_REG_WATCHDOG_TMR);
 
@@ -596,21 +595,21 @@ void crystalhd_flea_runtime_power_dn(struct crystalhd_hw *hw)
 		0xffffffff);
 #endif
 
-	// Stop memory arbiter first to freese memory access
+	/* Stop memory arbiter first to freese memory access */
 	hw->pfnWriteDevRegister(hw->adp, BCHP_PRI_ARB_CONTROL_REGS_MASTER_CTL, BCHP_PRI_ARB_CONTROL_REGS_MASTER_CTL_arb_disable_Disable);
 
-	// delay at least 15us for memory transactions to complete
-	// udelay(15);
+	/* delay at least 15us for memory transactions to complete */
+	/* udelay(15); */
 
 	/* Wait for MEMC to become idle. Continue even if we are no since worst case this would just mean higher power consumption */
 	pollCnt=0;
-	while (pollCnt++ <= 400) //200
+	while (pollCnt++ <= 400) /*200 */
 	{
 		regVal = hw->pfnReadDevRegister(hw->adp, BCHP_DDR23_CTL_REGS_0_CTL_STATUS);
 
 		if(regVal & BCHP_DDR23_CTL_REGS_0_CTL_STATUS_idle_MASK)
 		{
-			// udelay(10);
+			/* udelay(10); */
 			break;
 		}
 		udelay(10);
@@ -725,11 +724,11 @@ void crystalhd_flea_runtime_power_dn(struct crystalhd_hw *hw)
 	regVal |=	BCHP_CLK_PM_CTRL_DIS_DDR_108_CLK_MASK |	BCHP_CLK_PM_CTRL_DIS_DDR_216_CLK_MASK;
 	hw->pfnWriteDevRegister(hw->adp, BCHP_CLK_PM_CTRL, regVal);
 
-	// udelay(20);
+	/* udelay(20); */
 
-	//printk("RT Power Down Flea Complete\n");
+	/*printk("RT Power Down Flea Complete\n"); */
 
-	// Measure how much time we spend in idle
+	/* Measure how much time we spend in idle */
 	rdtscll(hw->TickStartInPD);
 
 	return;
@@ -810,7 +809,7 @@ void crystalhd_flea_update_tx_buff_info(struct crystalhd_hw *hw)
 	return;
 }
 
-// was HWFleaNotifyFllChange
+/* was HWFleaNotifyFllChange */
 void crystalhd_flea_notify_fll_change(struct crystalhd_hw *hw, bool bCleanupContext)
 {
 	unsigned long flags = 0;
@@ -834,19 +833,19 @@ void crystalhd_flea_notify_fll_change(struct crystalhd_hw *hw, bool bCleanupCont
 static
 void crystalhd_flea_init_power_state(struct crystalhd_hw *hw)
 {
-	hw->FleaEnablePWM = false;	// disable by default
+	hw->FleaEnablePWM = false;	/* enable by default */
 	hw->FleaPowerState = FLEA_PS_NONE;
 }
 
 static
 bool crystalhd_flea_set_power_state(struct crystalhd_hw *hw,
-					FLEA_POWER_STATES	NewState)
+					enum FLEA_POWER_STATES	NewState)
 {
 	bool StChangeSuccess=false;
 	uint32_t tempFLL = 0;
 	uint32_t freeListLen = 0;
 	BC_STATUS sts;
-	crystalhd_rx_dma_pkt *rx_pkt = NULL;
+	struct crystalhd_rx_dma_pkt *rx_pkt = NULL;
 
 	freeListLen = crystalhd_dioq_count(hw->rx_freeq);
 
@@ -864,14 +863,14 @@ bool crystalhd_flea_set_power_state(struct crystalhd_hw *hw,
 									hw->FleaFLLUpdateAddr,
 									1,
 									&freeListLen);
-				// We need to check to post here because we may never get a context to post otherwise
+				/* We need to check to post here because we may never get a context to post otherwise */
 				if(hw->PicQSts != 0)
 				{
 					rx_pkt = crystalhd_dioq_fetch(hw->rx_freeq);
 					if (rx_pkt)
 						sts = hw->pfnPostRxSideBuff(hw, rx_pkt);
 				}
-				//printk(" Success\n");
+				/*printk(" Success\n"); */
 
 			}else if(hw->FleaPowerState == FLEA_PS_LP_COMPLETE){
 				crystalhd_flea_runtime_power_up(hw);
@@ -888,7 +887,7 @@ bool crystalhd_flea_set_power_state(struct crystalhd_hw *hw,
 					crystalhd_flea_handle_PicQSts_intr(hw);
 					hw->PwrDwnPiQIntr = false;
 				}
-				// We need to check to post here because we may never get a context to post otherwise
+				/* We need to check to post here because we may never get a context to post otherwise */
 				if(hw->PicQSts != 0)
 				{
 					rx_pkt = crystalhd_dioq_fetch(hw->rx_freeq);
@@ -912,7 +911,7 @@ bool crystalhd_flea_set_power_state(struct crystalhd_hw *hw,
 				break;
 			}
 
-			//printk(" Success\n");
+			/*printk(" Success\n"); */
 
 			StChangeSuccess = true;
 			/* Write 0 FLL to FW to prevent it from sending PQ*/
@@ -953,9 +952,9 @@ bool crystalhd_flea_set_power_state(struct crystalhd_hw *hw,
 */
 static
 void crystalhd_flea_set_next_power_state(struct crystalhd_hw *hw,
-						FLEA_STATE_CH_EVENT		PowerEvt)
+						enum FLEA_STATE_CH_EVENT		PowerEvt)
 {
-	FLEA_POWER_STATES NextPS;
+	enum FLEA_POWER_STATES NextPS;
 	NextPS = hw->FleaPowerState;
 
 	if( hw->FleaEnablePWM == false )
@@ -964,9 +963,9 @@ void crystalhd_flea_set_next_power_state(struct crystalhd_hw *hw,
 		return;
 	}
 
-// 	printk("Trying Power State Transition from %x Because Of Event:%d \n",
-// 			hw->FleaPowerState,
-// 			PowerEvt);
+/*	printk("Trying Power State Transition from %x Because Of Event:%d \n", */
+/*			hw->FleaPowerState, */
+/*			PowerEvt); */
 
 	if(PowerEvt == FLEA_EVT_STOP_DEVICE)
 	{
@@ -987,13 +986,13 @@ void crystalhd_flea_set_next_power_state(struct crystalhd_hw *hw,
 			if(PowerEvt == FLEA_EVT_FLL_CHANGE)
 			{
 				/*Ready List Was Decremented. */
-				//printk("1:TxL0Sts:%x TxL1Sts:%x EmptyCnt:%x RxL0Sts:%x RxL1Sts:%x FwCmdCnt:%x\n",
-				//	hw->TxList0Sts,
-				//	hw->TxList1Sts,
-				//	hw->EmptyCnt,
-				//	hw->rx_list_sts[0],
-				//	hw->rx_list_sts[1],
-				//	hw->FwCmdCnt);
+				/*printk("1:TxL0Sts:%x TxL1Sts:%x EmptyCnt:%x RxL0Sts:%x RxL1Sts:%x FwCmdCnt:%x\n", */
+				/*	hw->TxList0Sts, */
+				/*	hw->TxList1Sts, */
+				/*	hw->EmptyCnt, */
+				/*	hw->rx_list_sts[0], */
+				/*	hw->rx_list_sts[1], */
+				/*	hw->FwCmdCnt); */
 
 				if( (hw->TxList0Sts == ListStsFree)	&&
 					(hw->TxList1Sts == ListStsFree) &&
@@ -1020,14 +1019,14 @@ void crystalhd_flea_set_next_power_state(struct crystalhd_hw *hw,
 				NextPS = FLEA_PS_ACTIVE;
 			}else if(PowerEvt == FLEA_EVT_CMD_COMP){
 
-				//printk("2:TxL0Sts:%x TxL1Sts:%x EmptyCnt:%x STAppFIFOEmpty:%x RxL0Sts:%x RxL1Sts:%x FwCmdCnt:%x\n",
-				//	hw->TxList0Sts,
-				//	hw->TxList1Sts,
-				//	hw->EmptyCnt,
-				//	hw->SingleThreadAppFIFOEmpty,
-				//	hw->rx_list_sts[0],
-				//	hw->rx_list_sts[1],
-				//	hw->FwCmdCnt);
+				/*printk("2:TxL0Sts:%x TxL1Sts:%x EmptyCnt:%x STAppFIFOEmpty:%x RxL0Sts:%x RxL1Sts:%x FwCmdCnt:%x\n", */
+				/*	hw->TxList0Sts, */
+				/*	hw->TxList1Sts, */
+				/*	hw->EmptyCnt, */
+				/*	hw->SingleThreadAppFIFOEmpty, */
+				/*	hw->rx_list_sts[0], */
+				/*	hw->rx_list_sts[1], */
+				/*	hw->FwCmdCnt); */
 
 				if( (hw->TxList0Sts == ListStsFree)	&&
 					(hw->TxList1Sts == ListStsFree) &&
@@ -1063,11 +1062,11 @@ void crystalhd_flea_set_next_power_state(struct crystalhd_hw *hw,
 
 	if(hw->FleaPowerState != NextPS)
 	{
-		//printk("%s:State Transition [FromSt:%x ToSt:%x] Because Of Event:%d \n",
-		//	__FUNCTION__,
-		//	hw->FleaPowerState,
-		//	NextPS,
-		//	PowerEvt);
+		printk("%s:State Transition [FromSt:%x ToSt:%x] Because Of Event:%d \n",
+			__FUNCTION__,
+			hw->FleaPowerState,
+			NextPS,
+			PowerEvt);
 
 		crystalhd_flea_set_power_state(hw,NextPS);
 	}
@@ -1075,15 +1074,17 @@ void crystalhd_flea_set_next_power_state(struct crystalhd_hw *hw,
 	return;
 }
 
-//// was FleaSetRxPicFireAddr
-//static
-//void crystalhd_flea_set_rx_pic_fire_addr(struct crystalhd_hw *hw, uint32_t BorshContents)
-//{
-//	hw->FleaRxPicDelAddr = BorshContents + 1 + HOST_TO_FW_PIC_DEL_INFO_ADDR;
-//	hw->FleaFLLUpdateAddr = BorshContents + 1 + HOST_TO_FW_FLL_ADDR;
-//
-//	return;
-//}
+/* was FleaSetRxPicFireAddr */
+#if 0
+static
+void crystalhd_flea_set_rx_pic_fire_addr(struct crystalhd_hw *hw, uint32_t BorshContents)
+{
+	hw->FleaRxPicDelAddr = BorshContents + 1 + HOST_TO_FW_PIC_DEL_INFO_ADDR;
+	hw->FleaFLLUpdateAddr = BorshContents + 1 + HOST_TO_FW_FLL_ADDR;
+
+	return;
+}
+#endif
 
 void crystalhd_flea_init_temperature_measure (struct crystalhd_hw *hw, bool bTurnOn)
 {
@@ -1099,7 +1100,7 @@ void crystalhd_flea_init_temperature_measure (struct crystalhd_hw *hw, bool bTur
 	return;
 }
 
-// was HwFleaUpdateTempInfo
+/* was HwFleaUpdateTempInfo */
 void crystalhd_flea_update_temperature(struct crystalhd_hw *hw)
 {
 	uint32_t	regVal = 0;
@@ -1126,71 +1127,77 @@ BC_STATUS crystalhd_flea_download_fw(struct crystalhd_hw *hw, uint8_t *pBuffer, 
 	uint32_t pollCnt=0,regVal=0;
 	uint32_t borchStachAddr=0;
 	uint32_t *pCmacSig=NULL,cmacOffset=0,i=0;
-	//uint32_t BuffSz = (BuffSzInDWords * 4);
-	//uint32_t HBCnt=0;
+	/*uint32_t BuffSz = (BuffSzInDWords * 4); */
+	/*uint32_t HBCnt=0; */
 
 	bool bRetVal = true;
+	bool bSecure = true; // Default production cards. Can be false only for internal Broadcom dev cards
 
 	dev_dbg(&hw->adp->pdev->dev, "[%s]: Sz:%d\n", __func__, buffSz);
 
-///*
-//-- Step 1. Enable the SRCUBBING and DRAM SCRAMBLING
-//-- Step 2. Poll for SCRAM_KEY_DONE_INT.
-//-- Step 3. Write the BORCH and STARCH addresses.
-//-- Step 4. Write the firmware to DRAM.
-//-- Step 5. Write the CMAC to SCRUB->CMAC registers.
-//-- Step 6. Write the ARM run bit to 1.
-//-- Step 7. Poll for BOOT verification done interrupt.
-//*/
+/*
+ *-- Step 1. Enable the SRCUBBING and DRAM SCRAMBLING
+ *-- Step 2. Poll for SCRAM_KEY_DONE_INT.
+ *-- Step 3. Write the BORCH and STARCH addresses.
+ *-- Step 4. Write the firmware to DRAM.
+ *-- Step 5. Write the CMAC to SCRUB->CMAC registers.
+ *-- Step 6. Write the ARM run bit to 1.
+ *-- Step 7. Poll for BOOT verification done interrupt.
+ */
 
-//	/* First validate that we got data in the FW buffer */
+	/* First validate that we got data in the FW buffer */
 	if (buffSz == 0)
 		return BC_STS_ERROR;
 
-//-- Step 1. Enable the SRCUBBING and DRAM SCRAMBLING.
-//   Can we set both the bits at the same time?? Security Arch Doc describes the steps
-//   and the first step is to enable scrubbing and then scrambling.
+/*-- Step 1. Enable the SRCUBBING and DRAM SCRAMBLING. */
+/*   Can we set both the bits at the same time?? Security Arch Doc describes the steps */
+/*   and the first step is to enable scrubbing and then scrambling. */
 
-	dev_dbg(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 1. Enable scrubbing\n");
-
-	//Enable Scrubbing
-	regVal = hw->pfnReadDevRegister(hw->adp, BCHP_SCRUB_CTRL_SCRUB_ENABLE);
-	regVal |= SCRUB_ENABLE_BIT;
-	hw->pfnWriteDevRegister(hw->adp, BCHP_SCRUB_CTRL_SCRUB_ENABLE, regVal);
-
-	//Enable Scrambling
-	regVal |= DRAM_SCRAM_ENABLE_BIT;
-	hw->pfnWriteDevRegister(hw->adp, BCHP_SCRUB_CTRL_SCRUB_ENABLE, regVal);
-
-
-//-- Step 2. Poll for SCRAM_KEY_DONE_INT.
-	dev_dbg(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 2. Poll for SCRAM_KEY_DONE_INT\n");
-
-	pollCnt=0;
-	while(pollCnt < FLEA_MAX_POLL_CNT)
+	if(bSecure)
 	{
-		regVal = hw->pfnReadDevRegister(hw->adp, BCHP_WRAP_MISC_INTR2_PCI_STATUS);
+		dev_dbg(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 1. Enable scrubbing\n");
 
-		if(regVal & SCRAM_KEY_DONE_INT_BIT)
-			break;
+		/* Enable Scrubbing */
+		regVal = hw->pfnReadDevRegister(hw->adp, BCHP_SCRUB_CTRL_SCRUB_ENABLE);
+		regVal |= SCRUB_ENABLE_BIT;
+		hw->pfnWriteDevRegister(hw->adp, BCHP_SCRUB_CTRL_SCRUB_ENABLE, regVal);
 
-		pollCnt++;
-		msleep_interruptible(1); /*1 Milli Sec delay*/
-	}
+		/* Enable Scrambling */
+		regVal |= DRAM_SCRAM_ENABLE_BIT;
+		hw->pfnWriteDevRegister(hw->adp, BCHP_SCRUB_CTRL_SCRUB_ENABLE, regVal);
 
-	//-- Will Assert when we do not see SCRAM_KEY_DONE_INTTERRUPT
-	if(!(regVal & SCRAM_KEY_DONE_INT_BIT))
-	{
-		dev_err(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 2. Did not get scram key done interrupt.\n");
-		return BC_STS_ERROR;
+
+		//-- Step 2. Poll for SCRAM_KEY_DONE_INT.
+		dev_dbg(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 2. Poll for SCRAM_KEY_DONE_INT\n");
+
+		pollCnt=0;
+		while(pollCnt < FLEA_MAX_POLL_CNT)
+		{
+			regVal = hw->pfnReadDevRegister(hw->adp, BCHP_WRAP_MISC_INTR2_PCI_STATUS);
+
+			if(regVal & SCRAM_KEY_DONE_INT_BIT)
+				break;
+
+			pollCnt++;
+			msleep_interruptible(1); /*1 Milli Sec delay*/
+		}
+
+		/* -- Will Assert when we do not see SCRAM_KEY_DONE_INTERRUPT */
+		if(!(regVal & SCRAM_KEY_DONE_INT_BIT))
+		{
+			dev_err(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 2. Did not get scram key done interrupt.\n");
+			return BC_STS_ERROR;
+		}
 	}
 
 	/*Clear the interrupts by writing the register value back*/
-	regVal &= 0x00FFFFFF; //Mask off the reserved bits.[24-31]
+	regVal &= 0x00FFFFFF; /*Mask off the reserved bits.[24-31] */
 	hw->pfnWriteDevRegister(hw->adp, BCHP_WRAP_MISC_INTR2_PCI_CLEAR, regVal);
 
-//-- Step 3. Write the BORCH and STARCH addresses.
+/*-- Step 3. Write the BORCH and STARCH addresses. */
 	borchStachAddr = GetScrubEndAddr(buffSz);
+	if(!bSecure)
+		borchStachAddr = (buffSz - 1) & BCHP_SCRUB_CTRL_BORCH_END_ADDRESS_BORCH_END_ADDR_MASK;
 
 	hw->pfnWriteDevRegister(hw->adp, BCHP_SCRUB_CTRL_BORCH_END_ADDRESS, borchStachAddr);
 	hw->pfnWriteDevRegister(hw->adp, BCHP_SCRUB_CTRL_STARCH_END_ADDRESS, borchStachAddr);
@@ -1199,13 +1206,13 @@ BC_STATUS crystalhd_flea_download_fw(struct crystalhd_hw *hw, uint8_t *pBuffer, 
 	 *	Now the command address is
 	 *	relative to firmware file size.
 	 */
-	//FWIFSetFleaCmdAddr(pHWExt->pFwExt,
-	//		borchStachAddr+1+DDRADDR_4_FWCMDS);
+	/*FWIFSetFleaCmdAddr(pHWExt->pFwExt, */
+	/*		borchStachAddr+1+DDRADDR_4_FWCMDS); */
 
 	hw->fwcmdPostAddr = borchStachAddr+1+DDRADDR_4_FWCMDS;
 	hw->fwcmdPostMbox = FW_CMD_POST_MBOX;
 	hw->fwcmdRespMbox = FW_CMD_RES_MBOX;
-	//FleaSetRxPicFireAddr(pHWExt,borchStachAddr);
+	/*FleaSetRxPicFireAddr(pHWExt,borchStachAddr); */
 	hw->FleaRxPicDelAddr = borchStachAddr + 1 + HOST_TO_FW_PIC_DEL_INFO_ADDR;
 	hw->FleaFLLUpdateAddr = borchStachAddr + 1 + HOST_TO_FW_FLL_ADDR;
 
@@ -1215,14 +1222,17 @@ BC_STATUS crystalhd_flea_download_fw(struct crystalhd_hw *hw, uint8_t *pBuffer, 
 			BCHP_SCRUB_CTRL_STARCH_END_ADDRESS,
 			borchStachAddr );
 
-//-- Step 4. Write the firmware to DRAM. [Without the Signature, 32-bit access to DRAM]
+/*-- Step 4. Write the firmware to DRAM. [Without the Signature, 32-bit access to DRAM] */
 
 	dev_dbg(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 4. Write the firmware to DRAM. Sz:%d Bytes\n",
 			buffSz - FLEA_FW_SIG_LEN_IN_BYTES - LENGTH_FIELD_SIZE);
 
-	hw->pfnDevDRAMWrite(hw, FW_DOWNLOAD_START_ADDR, (buffSz - FLEA_FW_SIG_LEN_IN_BYTES - LENGTH_FIELD_SIZE)/4, (uint32_t *)pBuffer);
+	if(bSecure)
+		hw->pfnDevDRAMWrite(hw, FW_DOWNLOAD_START_ADDR, (buffSz - FLEA_FW_SIG_LEN_IN_BYTES - LENGTH_FIELD_SIZE)/4, (uint32_t *)pBuffer);
+	else
+		hw->pfnDevDRAMWrite(hw, FW_DOWNLOAD_START_ADDR, buffSz/4, (uint32_t*)pBuffer);
 
-// -- Step 5. Write the signature to CMAC register.
+/* -- Step 5. Write the signature to CMAC register. */
 /*
 -- This is what we need to write to CMAC registers.
 ==================================================================================
@@ -1235,90 +1245,91 @@ BCHP_SCRUB_CTRL_BI_CMAC_95_64		0x000f6014			CMAC Bits[95:64]
 BCHP_SCRUB_CTRL_BI_CMAC_127_96		0x000f6018			CMAC Bits[127:96]
 ==================================================================================
 */
-	dev_dbg(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 5. Write the signature to CMAC register.\n");
-	cmacOffset = buffSz - FLEA_FW_SIG_LEN_IN_BYTES;
-	pCmacSig = (uint32_t *) &pBuffer[cmacOffset];
 
-	for(i=0;i < FLEA_FW_SIG_LEN_IN_DWORD;i++)
+	if(bSecure)
 	{
-		uint32_t offSet = (BCHP_SCRUB_CTRL_BI_CMAC_127_96 - (i * 4));
+		dev_dbg(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 5. Write the signature to CMAC register.\n");
+		cmacOffset = buffSz - FLEA_FW_SIG_LEN_IN_BYTES;
+		pCmacSig = (uint32_t *) &pBuffer[cmacOffset];
 
-		hw->pfnWriteDevRegister(hw->adp, offSet, bswap_32_1(*pCmacSig));
+		for(i=0;i < FLEA_FW_SIG_LEN_IN_DWORD;i++)
+		{
+			uint32_t offSet = (BCHP_SCRUB_CTRL_BI_CMAC_127_96 - (i * 4));
 
-		pCmacSig++;
+			hw->pfnWriteDevRegister(hw->adp, offSet, cpu_to_be32(*pCmacSig));
+
+			pCmacSig++;
+		}
 	}
 
-//-- Step 6. Write the ARM run bit to 1.
-//   We need a write back because we do not want to change other bits
+/*-- Step 6. Write the ARM run bit to 1. */
+/*   We need a write back because we do not want to change other bits */
 	dev_dbg(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 6. Write the ARM run bit to 1.\n");
 
 	regVal = hw->pfnReadDevRegister(hw->adp, BCHP_ARMCR4_BRIDGE_REG_BRIDGE_CTL);
 	regVal |= ARM_RUN_REQ_BIT;
 	hw->pfnWriteDevRegister(hw->adp, BCHP_ARMCR4_BRIDGE_REG_BRIDGE_CTL, regVal);
 
-//-- Step 7. Poll for Boot Verification done/failure interrupt.
-	dev_dbg(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 7. Poll for Boot Verification done/failure interrupt.\n");
-
-	pollCnt=0;
-	while(1)
+	if(bSecure)
 	{
-		regVal = hw->pfnReadDevRegister(hw->adp, BCHP_WRAP_MISC_INTR2_PCI_STATUS);
-
-		if(regVal & BOOT_VER_FAIL_BIT ) //|| regVal & SHARF_ERR_INTR)
+		/* -- Step 7. Poll for Boot Verification done/failure interrupt.*/
+		dev_dbg(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 7. Poll for Boot Verification done/failure interrupt.\n");
+		pollCnt=0;
+		while(1)
 		{
-			dev_err(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 7. Error bit occured. RetVal:%x\n", regVal);
+			regVal = hw->pfnReadDevRegister(hw->adp, BCHP_WRAP_MISC_INTR2_PCI_STATUS);
 
-			bRetVal = false;
-			break;
+			if(regVal & BOOT_VER_FAIL_BIT )
+			{
+				dev_err(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 7. Error bit occured. RetVal:%x\n", regVal);
+
+				bRetVal = false;
+				break;
+			}
+
+			if(regVal & BOOT_VER_DONE_BIT)
+			{
+				dev_dbg(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 7. Done  RetVal:%x\n", regVal);
+
+				bRetVal = true; /*This is the only place we return TRUE from*/
+				break;
+			}
+
+			pollCnt++;
+			if( pollCnt >= FLEA_MAX_POLL_CNT )
+			{
+				dev_err(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 7. Both done and failure bits are not set.\n");
+				bRetVal = false;
+				break;
+			}
+
+			msleep_interruptible(5); /*5 Milli Sec delay*/
 		}
 
-		if(regVal & BOOT_VER_DONE_BIT)
+		if( !bRetVal )
 		{
-			dev_dbg(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 7. Done  RetVal:%x\n", regVal);
-
-			bRetVal = true; /*This is the only place we return TRUE from*/
-			break;
+			dev_info(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 7. Firmware image signature failure.\n");
+			return BC_STS_ERROR;
 		}
 
-		pollCnt++;
-		if( pollCnt >= FLEA_MAX_POLL_CNT )
-		{
-			dev_err(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 7. Both done and failure bits are not set.\n");
-			bRetVal = false;
-			break;
-		}
+		/*Clear the interrupts by writing the register value back*/
+		regVal &= 0x00FFFFFF; //Mask off the reserved bits.[24-31]
+		hw->pfnWriteDevRegister(hw->adp, BCHP_WRAP_MISC_INTR2_PCI_CLEAR, regVal);
 
-		msleep_interruptible(1); /*1 Milli Sec delay*/
+		msleep_interruptible(10); /*10 Milli Sec delay*/
 	}
-
-	if( !bRetVal )
-	{
-		dev_info(&hw->adp->pdev->dev,"[crystalhd_flea_download_fw]: step 7. Firmware image signature failure.\n");
-		return BC_STS_ERROR;
-	}
-
-	/*Clear the interrupts by writing the register value back*/
-	regVal &= 0x00FFFFFF; //Mask off the reserved bits.[24-31]
-	hw->pfnWriteDevRegister(hw->adp, BCHP_WRAP_MISC_INTR2_PCI_CLEAR, regVal);
-
-	msleep_interruptible(10); /*10 Milli Sec delay*/
-
-/*
--- It was seen on Dell390 systems that the firmware command was fired before the
--- firmware was actually ready to accept the firmware commands. The driver did
--- not recieve a response for the firmware commands and this was causing the DIL to timeout
--- ,reclaim the resources and crash. The following code looks for the heartbeat and
--- to make sure that we return from this function only when we get the heart beat making sure
--- that the firmware is running.
-*/
+	else
+		bRetVal = true;
 
 	/*
-	 * By default enable everything except the RX_MBOX_WRITE_WRKARND [scratch workaround]
-	 * to be backward compatible. The firmware will enable the workaround
-	 * by writing to scratch 5. In future the firmware can disable the workarounds
-	 * and we will not have to WHQL the driver at all.
-	 */
-	//hw->EnWorkArounds = RX_PIC_Q_STS_WRKARND | RX_DRAM_WRITE_WRKARND;
+	   -- It was seen on Dell390 systems that the firmware command was fired before the
+	   -- firmware was actually ready to accept the firmware commands. The driver did
+	   -- not recieve a response for the firmware commands and this was causing the DIL to timeout
+	   -- ,reclaim the resources and crash. The following code looks for the heartbeat and
+	   -- to make sure that we return from this function only when we get the heart beat making sure
+	   -- that the firmware is running.
+	   */
+
 	bRetVal = crystalhd_flea_detect_fw_alive(hw);
 	if( !bRetVal )
 	{
@@ -1326,23 +1337,7 @@ BCHP_SCRUB_CTRL_BI_CMAC_127_96		0x000f6018			CMAC Bits[127:96]
 		return BC_STS_ERROR;
 	}
 
-	/*if(bRetVal == TRUE)
-	{
-		ULONG EnaWorkArnds;
-		hw->pfnReadDevRegister(hw->adp,
-			RX_POST_CONFIRM_SCRATCH,
-			&EnaWorkArnds);
-
-		if( ((EnaWorkArnds & 0xffff0000) >> 16) ==	FLEA_WORK_AROUND_SIG)
-		{
-			pHWExt->EnWorkArounds = EnaWorkArnds & 0xffff;
-			DebugPrint(BRCM_COMP_ID,
-				BRCM_DBG_LEVEL,
-				"WorkArounds Enable Value[%x]\n",pHWExt->EnWorkArounds);
-		}
-	}*/
-
-	dev_info(&hw->adp->pdev->dev, "[%s]: Complete.\n", __func__);
+	dev_dbg(&hw->adp->pdev->dev, "[%s]: Complete.\n", __func__);
 	return BC_STS_SUCCESS;
 }
 
@@ -1407,8 +1402,8 @@ bool crystalhd_flea_start_device(struct crystalhd_hw *hw)
 
 	msleep_interruptible(5);
 
-	// Enable the Single Shot Transaction on PCI by disabling the
-	// bit 29 of transaction configuration register
+	/* Enable the Single Shot Transaction on PCI by disabling the */
+	/* bit 29 of transaction configuration register */
 
 	regVal = hw->pfnReadDevRegister(hw->adp, BCHP_PCIE_TL_TRANSACTION_CONFIGURATION);
 	regVal &= (~(BC_BIT(29)));
@@ -1479,7 +1474,7 @@ bool crystalhd_flea_stop_device(struct crystalhd_hw *hw)
 
 	hw->pfnWriteDevRegister(hw->adp, BCHP_PRI_ARB_CONTROL_REGS_REFRESH_CTL_0, 0x0);
 
-	// * Wait for MEMC to become idle
+	/* * Wait for MEMC to become idle */
 	pollCnt=0;
 	while (1)
 	{
@@ -1519,10 +1514,10 @@ bool crystalhd_flea_stop_device(struct crystalhd_hw *hw)
 
 	regVal |= BCHP_DDR23_CTL_REGS_0_PARAMS2_clke_MASK;
 
-	// * disable CKE
+	/* * disable CKE */
 	hw->pfnWriteDevRegister(hw->adp, BCHP_DDR23_CTL_REGS_0_PARAMS2, regVal);
 
-	// * issue refresh command
+	/* * issue refresh command */
 	hw->pfnWriteDevRegister(hw->adp, BCHP_DDR23_CTL_REGS_0_REFRESH_CMD, 0x60);
 
 	pollCnt=0;
@@ -1540,7 +1535,7 @@ bool crystalhd_flea_stop_device(struct crystalhd_hw *hw)
 		msleep_interruptible(1);
 	}
 
-	// * Enable DDR clock, DM and READ_ENABLE pads power down and force into the power down
+	/* * Enable DDR clock, DM and READ_ENABLE pads power down and force into the power down */
 	hw->pfnWriteDevRegister(hw->adp, BCHP_DDR23_PHY_BYTE_LANE_0_IDLE_PAD_CONTROL,
 							BCHP_DDR23_PHY_BYTE_LANE_0_IDLE_PAD_CONTROL_idle_MASK |
 							BCHP_DDR23_PHY_BYTE_LANE_0_IDLE_PAD_CONTROL_dm_iddq_MASK |
@@ -1557,39 +1552,39 @@ bool crystalhd_flea_stop_device(struct crystalhd_hw *hw)
 							BCHP_DDR23_PHY_BYTE_LANE_1_IDLE_PAD_CONTROL_dqs_iddq_MASK |
 							BCHP_DDR23_PHY_BYTE_LANE_1_IDLE_PAD_CONTROL_clk_iddq_MASK);
 
-	// * Power down BL LDO cells
+	/* * Power down BL LDO cells */
 	hw->pfnWriteDevRegister(hw->adp, BCHP_DDR23_PHY_BYTE_LANE_0_CLOCK_REG_CONTROL,
 							BCHP_DDR23_PHY_BYTE_LANE_0_CLOCK_REG_CONTROL_pwrdn_MASK);
 
 	hw->pfnWriteDevRegister(hw->adp, BCHP_DDR23_PHY_BYTE_LANE_1_CLOCK_REG_CONTROL,
 							BCHP_DDR23_PHY_BYTE_LANE_1_CLOCK_REG_CONTROL_pwrdn_MASK);
 
-	// * Enable DDR control signal pad power down and force into the power down
+	/* * Enable DDR control signal pad power down and force into the power down */
 	hw->pfnWriteDevRegister(hw->adp, BCHP_DDR23_PHY_CONTROL_REGS_IDLE_PAD_CONTROL,
 							BCHP_DDR23_PHY_CONTROL_REGS_IDLE_PAD_CONTROL_idle_MASK |
 							BCHP_DDR23_PHY_CONTROL_REGS_IDLE_PAD_CONTROL_ctl_iddq_MASK);
 
-	// * Disable ddr phy clock
+	/* * Disable ddr phy clock */
 	hw->pfnWriteDevRegister(hw->adp, BCHP_DDR23_PHY_CONTROL_REGS_CLK_PM_CTRL,
 							BCHP_DDR23_PHY_CONTROL_REGS_CLK_PM_CTRL_DIS_DDR_CLK_MASK);
 
-	// * Disable PLL output
+	/* * Disable PLL output */
 	regVal = hw->pfnReadDevRegister(hw->adp, BCHP_DDR23_PHY_CONTROL_REGS_PLL_CONFIG);
 
 	hw->pfnWriteDevRegister(hw->adp, BCHP_DDR23_PHY_CONTROL_REGS_PLL_CONFIG,
 							regVal & ~BCHP_DDR23_PHY_CONTROL_REGS_PLL_CONFIG_ENB_CLKOUT_MASK);
 
-	// * Power down addr_ctl LDO cells
+	/* * Power down addr_ctl LDO cells */
 	hw->pfnWriteDevRegister(hw->adp, BCHP_DDR23_PHY_CONTROL_REGS_CLOCK_REG_CONTROL,
 							BCHP_DDR23_PHY_CONTROL_REGS_CLOCK_REG_CONTROL_pwrdn_MASK);
 
-	// * Power down the PLL
+	/* * Power down the PLL */
 	regVal = hw->pfnReadDevRegister(hw->adp, BCHP_DDR23_PHY_CONTROL_REGS_PLL_CONFIG);
 
 	hw->pfnWriteDevRegister(hw->adp, BCHP_DDR23_PHY_CONTROL_REGS_PLL_CONFIG,
 							regVal | BCHP_DDR23_PHY_CONTROL_REGS_PLL_CONFIG_PWRDN_MASK);
 
-	// shut down the PLL1
+	/* shut down the PLL1 */
 	regVal = hw->pfnReadDevRegister(hw->adp, BCHP_CLK_PLL1_CTRL);
 
 	hw->pfnWriteDevRegister(hw->adp, BCHP_CLK_PLL1_CTRL,
@@ -1628,8 +1623,8 @@ crystalhd_flea_wake_up_hw(struct crystalhd_hw *hw)
 		crystalhd_flea_set_next_power_state(hw,	FLEA_EVT_FLL_CHANGE);
 	}
 
-	// Now notify HW of the number of entries in the Free List
-	// This starts up the channel bitmap delivery
+	/* Now notify HW of the number of entries in the Free List */
+	/* This starts up the channel bitmap delivery */
 	crystalhd_flea_notify_fll_change(hw, false);
 
 	hw->WakeUpDecodeDone = true;
@@ -1644,7 +1639,7 @@ bool crystalhd_flea_check_input_full(struct crystalhd_hw *hw, uint32_t needed_sz
 	uint32_t				FlagsAddr=0;
 
 	*empty_sz = 0;
-//	*DramAddrOut=0;
+/*	*DramAddrOut=0; */
 
 
 	/* Add condition here to wake up the HW in case some application is trying to do TX before starting RX - like FP */
@@ -1652,13 +1647,13 @@ bool crystalhd_flea_check_input_full(struct crystalhd_hw *hw, uint32_t needed_sz
 
 	if(hw->WakeUpDecodeDone != true)
 	{
-		// Only wake up the HW if we are either being called from a single threaded app - like FP
-		// or if we are not checking for the input buffer size as just a test
+		/* Only wake up the HW if we are either being called from a single threaded app - like FP */
+		/* or if we are not checking for the input buffer size as just a test */
 		if(*flags == 0)
 			crystalhd_flea_wake_up_hw(hw);
 		else {
-			*empty_sz = 2 * 1024 * 1024; // FW Buffer size
-			//*DramAddrOut=0;
+			*empty_sz = 2 * 1024 * 1024; /* FW Buffer size */
+			/**DramAddrOut=0; */
 			*flags=0;
 			return false;
 		}
@@ -1667,11 +1662,11 @@ bool crystalhd_flea_check_input_full(struct crystalhd_hw *hw, uint32_t needed_sz
 	/* if we have told the app that we have buffer empty then we cannot go to low power */
 	if((hw->FleaPowerState != FLEA_PS_ACTIVE) && !hw->SingleThreadAppFIFOEmpty)
 	{
-		//*TxBuffSzOut=0;
-		//*DramAddrOut=0;
+		/**TxBuffSzOut=0; */
+		/**DramAddrOut=0; */
 		*empty_sz = 0;
 		*flags=0;
-		//printk("PD can't Tx\n");
+		/*printk("PD can't Tx\n"); */
 		return true; /*Indicate FULL*/
 	}
 
@@ -1679,7 +1674,7 @@ bool crystalhd_flea_check_input_full(struct crystalhd_hw *hw, uint32_t needed_sz
 	if(hw->TxFwInputBuffInfo.Flags & DFW_FLAGS_TX_ABORT)
 	{
 		*empty_sz=0;
-		//*DramAddrOut=0;
+		/**DramAddrOut=0; */
 		*flags |= DFW_FLAGS_TX_ABORT;
 		return true;
 	}
@@ -1688,7 +1683,7 @@ bool crystalhd_flea_check_input_full(struct crystalhd_hw *hw, uint32_t needed_sz
 		||(!hw->TxFwInputBuffInfo.DramBuffAdd))
 	{
 		*empty_sz=0;
-		//*DramAddrOut=0;
+		/**DramAddrOut=0; */
 		*flags=0;
 		return true; /*Indicate FULL*/
 	}
@@ -1711,30 +1706,30 @@ bool crystalhd_flea_check_input_full(struct crystalhd_hw *hw, uint32_t needed_sz
 	-- Firmware SAYS: I AM HUNGRY, GIVE ME FOOD. :)
 	*/
 	*empty_sz=hw->TxFwInputBuffInfo.DramBuffSzInBytes;
-	//*dramAddrOut=pHWExt->TxFwInputBuffInfo.DramBuffAdd;
-//	printk("empty size is %d\n", *empty_sz);
+	/**dramAddrOut=pHWExt->TxFwInputBuffInfo.DramBuffAdd; */
+/*	printk("empty size is %d\n", *empty_sz); */
 
 	/* If we are just checking stats and are not actually going to DMA, don't increment */
 	/* But we have to account for single threaded apps */
 	if((*flags & 0x08) == 0x08)
 	{
-		// This is a synchronized function
-		// NAREN - In single threaded mode, if we have less than a defined size of buffer
-		// ask the firmware to wrap around. To prevent deadlocks.
+		/* This is a synchronized function */
+		/* NAREN - In single threaded mode, if we have less than a defined size of buffer */
+		/* ask the firmware to wrap around. To prevent deadlocks. */
 		if(hw->TxFwInputBuffInfo.DramBuffSzInBytes < TX_WRAP_THRESHOLD)
 		{
 			pTxBuffInfo = (TX_INPUT_BUFFER_INFO *) (0);
 			FlagsAddr = hw->TxBuffInfoAddr + ((uintptr_t) (&pTxBuffInfo->Flags));
-			// Read Modify the Flags to ask the FW to WRAP
+			/* Read Modify the Flags to ask the FW to WRAP */
 			hw->pfnDevDRAMRead(hw,FlagsAddr,1,&regVal);
 			regVal |= DFW_FLAGS_WRAP;
 			hw->pfnDevDRAMWrite(hw,FlagsAddr,1,&regVal);
 
-			// Indicate Busy to the application because we have to get new buffers from FW
+			/* Indicate Busy to the application because we have to get new buffers from FW */
 			*empty_sz=0;
-			// *DramAddrOut=0;
+			/* *DramAddrOut=0; */
 			*flags=0;
-			// Wait for the next interrupt from the HW
+			/* Wait for the next interrupt from the HW */
 			hw->TxFwInputBuffInfo.DramBuffSzInBytes = 0;
 			hw->TxFwInputBuffInfo.DramBuffAdd = 0;
 			return true;
@@ -1743,10 +1738,10 @@ bool crystalhd_flea_check_input_full(struct crystalhd_hw *hw, uint32_t needed_sz
 			hw->SingleThreadAppFIFOEmpty = true;
 	}
 	else if((*flags & 0x04) != 0x04)
-		hw->EmptyCnt++;		//OS_INTERLOCK_INCREMENT(&pHWExt->EmptyCnt);
+		hw->EmptyCnt++;		/*OS_INTERLOCK_INCREMENT(&pHWExt->EmptyCnt); */
 
-	// Different from our Windows implementation
-	// set bit 7 of the flags field to indicate that we have to use the destination address for TX
+	/* Different from our Windows implementation */
+	/* set bit 7 of the flags field to indicate that we have to use the destination address for TX */
 	*flags |= BC_BIT(7);
 
 	return false; /*Indicate Empty*/
@@ -1755,11 +1750,11 @@ bool crystalhd_flea_check_input_full(struct crystalhd_hw *hw, uint32_t needed_sz
 BC_STATUS crystalhd_flea_fw_cmd_post_proc(struct crystalhd_hw *hw, BC_FW_CMD *fw_cmd)
 {
 	BC_STATUS sts = BC_STS_SUCCESS;
-	DecRspChannelStartVideo *st_rsp = NULL;
-	C011_TS_RSP				*pGenRsp = NULL;
-	DecRspChannelChannelOpen *pRsp  = NULL;
+	struct DecRspChannelStartVideo *st_rsp = NULL;
+	struct C011_TS_CMD				*pGenRsp = NULL;
+	struct DecRspChannelChannelOpen *pRsp  = NULL;
 
-	pGenRsp = (C011_TS_RSP *) fw_cmd->rsp;
+	pGenRsp = (struct C011_TS_CMD *) fw_cmd->rsp;
 
 	switch (fw_cmd->cmd[0]) {
 		case eCMD_C011_DEC_CHAN_STREAM_OPEN:
@@ -1768,7 +1763,7 @@ BC_STATUS crystalhd_flea_fw_cmd_post_proc(struct crystalhd_hw *hw, BC_FW_CMD *fw
 			dev_dbg(&hw->adp->pdev->dev, "Snooped Stream Open Cmd For ChNo:%x\n", hw->channelNum);
 			break;
 		case eCMD_C011_DEC_CHAN_OPEN:
-			pRsp = (DecRspChannelChannelOpen *)pGenRsp;
+			pRsp = (struct DecRspChannelChannelOpen *)pGenRsp;
 			hw->channelNum = pRsp->ChannelID;
 
 			/* used in Flea to update the Tx Buffer stats */
@@ -1790,7 +1785,7 @@ BC_STATUS crystalhd_flea_fw_cmd_post_proc(struct crystalhd_hw *hw, BC_FW_CMD *fw
 					hw->TxBuffInfoAddr);
 			break;
 		case eCMD_C011_DEC_CHAN_START_VIDEO:
-			st_rsp = (DecRspChannelStartVideo *)fw_cmd->rsp;
+			st_rsp = (struct DecRspChannelStartVideo *)fw_cmd->rsp;
 			hw->pib_del_Q_addr = st_rsp->picInfoDeliveryQ;
 			hw->pib_rel_Q_addr = st_rsp->picInfoReleaseQ;
 
@@ -1857,7 +1852,7 @@ BC_STATUS crystalhd_flea_do_fw_cmd(struct crystalhd_hw *hw, BC_FW_CMD *fw_cmd)
 
 	msleep_interruptible(50);
 
-	// FW commands should complete even if we got a signal from the upper layer
+	/* FW commands should complete even if we got a signal from the upper layer */
 	crystalhd_wait_on_event(&fw_cmd_event, hw->fwcmd_evt_sts,
 							20000, rc, true);
 
@@ -1922,7 +1917,7 @@ void crystalhd_flea_get_dnsz(struct crystalhd_hw *hw, uint32_t list_index, uint3
 
 BC_STATUS crystalhd_flea_hw_pause(struct crystalhd_hw *hw, bool state)
 {
-	//printk("%s: Set flea to power down.\n", __func__);
+	/*printk("%s: Set flea to power down.\n", __func__); */
 	crystalhd_flea_set_next_power_state(hw,	FLEA_EVT_FLL_CHANGE);
 	return BC_STS_SUCCESS;
 }
@@ -1930,22 +1925,22 @@ BC_STATUS crystalhd_flea_hw_pause(struct crystalhd_hw *hw, bool state)
 bool crystalhd_flea_peek_next_decoded_frame(struct crystalhd_hw *hw, uint64_t *meta_payload, uint32_t *picNumFlags, uint32_t PicWidth)
 {
 	unsigned long flags = 0;
-	crystalhd_dioq_t *ioq;
-	crystalhd_elem_t *tmp;
-	crystalhd_rx_dma_pkt *rpkt;
+	struct crystalhd_dioq *ioq;
+	struct crystalhd_elem *tmp;
+	struct crystalhd_rx_dma_pkt *rpkt;
 
 	*meta_payload = 0;
 
 	ioq = hw->rx_rdyq;
 	spin_lock_irqsave(&ioq->lock, flags);
 
-	if ((ioq->count > 0) && (ioq->head != (crystalhd_elem_t *)&ioq->head)) {
+	if ((ioq->count > 0) && (ioq->head != (struct crystalhd_elem *)&ioq->head)) {
 		tmp = ioq->head;
 		spin_unlock_irqrestore(&ioq->lock, flags);
-		rpkt = (crystalhd_rx_dma_pkt *)tmp->data;
+		rpkt = (struct crystalhd_rx_dma_pkt *)tmp->data;
 		if (rpkt) {
 			flea_GetPictureInfo(hw, rpkt, picNumFlags, meta_payload);
-			//printk("%s: flea_GetPictureInfo Pic#:%d\n", __func__, PicNumber);
+			/*printk("%s: flea_GetPictureInfo Pic#:%d\n", __func__, PicNumber); */
 		}
 		return true;
 	}
@@ -1961,7 +1956,7 @@ void crystalhd_flea_clear_rx_errs_intrs(struct crystalhd_hw *hw)
 */
 {
 	uint32_t ulRegVal;
-	FLEA_INTR_STS_REG	IntrToClear,IntrSts;
+	union FLEA_INTR_BITS_COMMON	IntrToClear,IntrSts;
 
 	IntrToClear.WholeReg = 0;
 	IntrSts.WholeReg = 0;
@@ -1993,7 +1988,7 @@ void crystalhd_flea_clear_rx_errs_intrs(struct crystalhd_hw *hw)
 
 void crystalhd_flea_stop_rx_dma_engine(struct crystalhd_hw *hw)
 {
-	FLEA_INTR_STS_REG	IntrStsValue;
+	union FLEA_INTR_BITS_COMMON	IntrStsValue;
 	bool failedL0 = true, failedL1 = true;
 	uint32_t pollCnt = 0;
 
@@ -2001,7 +1996,8 @@ void crystalhd_flea_stop_rx_dma_engine(struct crystalhd_hw *hw)
 
 	if((hw->rx_list_sts[0] == sts_free) && (hw->rx_list_sts[1] == sts_free)) {
 		hw->RxCaptureState = 0;
-		return; // Nothing to be done
+		hw->RxSeqNum = 0;
+		return; /* Nothing to be done */
 	}
 
 	if(hw->rx_list_sts[0] == sts_free)
@@ -2048,12 +2044,13 @@ void crystalhd_flea_stop_rx_dma_engine(struct crystalhd_hw *hw)
 		printk("Failed to stop RX DMA\n");
 
 	hw->RxCaptureState = 0;
+	hw->RxSeqNum = 0;
 
 	crystalhd_flea_clear_rx_errs_intrs(hw);
 }
 
 BC_STATUS crystalhd_flea_hw_fire_rxdma(struct crystalhd_hw *hw,
-									   crystalhd_rx_dma_pkt *rx_pkt)
+									   struct crystalhd_rx_dma_pkt *rx_pkt)
 {
 	struct device *dev;
 	addr_64 desc_addr;
@@ -2074,18 +2071,20 @@ BC_STATUS crystalhd_flea_hw_fire_rxdma(struct crystalhd_hw *hw,
 	}
 
 	if(hw->RxCaptureState != 1) {
-		printk("Capture not enabled\n");
+		dev_err(dev, "Capture not enabled\n");
 		return BC_STS_BUSY;
 	}
 
 	spin_lock_irqsave(&hw->rx_lock, flags);
 	if (hw->rx_list_sts[hw->rx_list_post_index]) {
+		dev_dbg(dev, "HW list is busy\n");
 		spin_unlock_irqrestore(&hw->rx_lock, flags);
 		return BC_STS_BUSY;
 	}
 
 	if (!TEST_BIT(hw->PicQSts, hw->channelNum)) {
-		// NO pictures available for this channel
+		/* NO pictures available for this channel */
+		dev_dbg(dev, "No Picture Available for DMA\n");
 		spin_unlock_irqrestore(&hw->rx_lock, flags);
 		return BC_STS_BUSY;
 	}
@@ -2131,7 +2130,7 @@ BC_STATUS crystalhd_flea_hw_fire_rxdma(struct crystalhd_hw *hw,
 	return BC_STS_SUCCESS;
 }
 
-BC_STATUS crystalhd_flea_hw_post_cap_buff(struct crystalhd_hw *hw, crystalhd_rx_dma_pkt *rx_pkt)
+BC_STATUS crystalhd_flea_hw_post_cap_buff(struct crystalhd_hw *hw, struct crystalhd_rx_dma_pkt *rx_pkt)
 {
 	BC_STATUS sts = crystalhd_flea_hw_fire_rxdma(hw, rx_pkt);
 
@@ -2153,7 +2152,7 @@ void crystalhd_flea_start_tx_dma_engine(struct crystalhd_hw *hw, uint8_t list_id
 	hw->EmptyCnt--;
 	hw->SingleThreadAppFIFOEmpty = false;
 
-	// For FLEA, first update the HW with the DMA parameters
+	/* For FLEA, first update the HW with the DMA parameters */
 	WrSzInDWords = (sizeof(TxBuffInfo.DramBuffAdd) +
 					sizeof(TxBuffInfo.DramBuffSzInBytes) +
 					sizeof(TxBuffInfo.HostXferSzInBytes))/4;
@@ -2202,6 +2201,10 @@ BC_STATUS crystalhd_flea_stop_tx_dma_engine(struct crystalhd_hw *hw)
 	dev_dbg(dev, "Stopping TX DMA Engine..\n");
 
 	if (!(dma_cntrl & BCHP_MISC1_TX_SW_DESC_LIST_CTRL_STS_TX_DMA_RUN_STOP_MASK)) {
+		hw->TxList0Sts = ListStsFree;
+		hw->TxList1Sts = ListStsFree;
+		hw->tx_list_post_index = 0;
+
 		dev_dbg(dev, "Already Stopped\n");
 		return BC_STS_SUCCESS;
 	}
@@ -2266,13 +2269,13 @@ static void crystalhd_flea_update_tx_done_to_fw(struct crystalhd_hw *hw)
 	pTxBuffInfo = (TX_INPUT_BUFFER_INFO *) (0);
 	seqNumAddr = hw->TxBuffInfoAddr + ((uintptr_t) (&pTxBuffInfo->SeqNum));
 
-	//Read the seqnece number
+	/*Read the seqnece number */
 	hw->pfnDevDRAMRead(hw, seqNumAddr, 1, &regVal);
 
 	seqVal = regVal;
 	regVal++;
 
-	//Increment and Write back to same memory location.
+	/*Increment and Write back to same memory location. */
 	hw->pfnDevDRAMWrite(hw,	seqNumAddr, 1, &regVal);
 
 	regVal = hw->pfnReadDevRegister(hw->adp, INDICATE_TX_DONE_REG);
@@ -2343,7 +2346,7 @@ bool crystalhd_flea_tx_list1_handler(struct crystalhd_hw *hw, uint32_t err_sts)
 	return true;
 }
 
-void crystalhd_flea_tx_isr(struct crystalhd_hw *hw, FLEA_INTR_STS_REG int_sts)
+void crystalhd_flea_tx_isr(struct crystalhd_hw *hw, union FLEA_INTR_BITS_COMMON int_sts)
 {
 	uint32_t err_sts;
 
@@ -2374,12 +2377,12 @@ void crystalhd_flea_tx_isr(struct crystalhd_hw *hw, FLEA_INTR_STS_REG int_sts)
 }
 
 bool crystalhd_flea_rx_list0_handler(struct crystalhd_hw *hw,
-									 FLEA_INTR_STS_REG int_sts,
+									 union FLEA_INTR_BITS_COMMON int_sts,
 									 uint32_t y_err_sts,
 									 uint32_t uv_err_sts)
 {
 	uint32_t tmp;
-	list_sts tmp_lsts;
+	enum list_sts tmp_lsts;
 
 	if (!(y_err_sts & GET_Y0_ERR_MSK) && !(uv_err_sts & GET_UV0_ERR_MSK))
 		return false;
@@ -2397,7 +2400,7 @@ bool crystalhd_flea_rx_list0_handler(struct crystalhd_hw *hw,
 	}
 
 	if (y_err_sts & MISC1_Y_RX_ERROR_STATUS_RX_L0_FIFO_FULL_ERRORS_MASK) {
-		// Can never happen for Flea
+		/* Can never happen for Flea */
 		printk("FLEA fifo full - impossible\n");
 		hw->rx_list_sts[0] &= ~rx_y_mask;
 		hw->rx_list_sts[0] |= rx_y_error;
@@ -2421,7 +2424,7 @@ bool crystalhd_flea_rx_list0_handler(struct crystalhd_hw *hw,
 	}
 
 	if (uv_err_sts & MISC1_UV_RX_ERROR_STATUS_RX_L0_FIFO_FULL_ERRORS_MASK) {
-		// Can never happen for Flea
+		/* Can never happen for Flea */
 		printk("FLEA fifo full - impossible\n");
 		hw->rx_list_sts[0] &= ~rx_uv_mask;
 		hw->rx_list_sts[0] |= rx_uv_error;
@@ -2448,12 +2451,12 @@ bool crystalhd_flea_rx_list0_handler(struct crystalhd_hw *hw,
 }
 
 bool crystalhd_flea_rx_list1_handler(struct crystalhd_hw *hw,
-									 FLEA_INTR_STS_REG int_sts,
+									 union FLEA_INTR_BITS_COMMON int_sts,
 									 uint32_t y_err_sts,
 									 uint32_t uv_err_sts)
 {
 	uint32_t tmp;
-	list_sts tmp_lsts;
+	enum list_sts tmp_lsts;
 
 	if (!(y_err_sts & GET_Y1_ERR_MSK) && !(uv_err_sts & GET_UV1_ERR_MSK))
 		return false;
@@ -2471,7 +2474,7 @@ bool crystalhd_flea_rx_list1_handler(struct crystalhd_hw *hw,
 	}
 
 	if (y_err_sts & MISC1_Y_RX_ERROR_STATUS_RX_L1_FIFO_FULL_ERRORS_MASK) {
-		// Can never happen for Flea
+		/* Can never happen for Flea */
 		printk("FLEA fifo full - impossible\n");
 		hw->rx_list_sts[1] &= ~rx_y_mask;
 		hw->rx_list_sts[1] |= rx_y_error;
@@ -2495,7 +2498,7 @@ bool crystalhd_flea_rx_list1_handler(struct crystalhd_hw *hw,
 	}
 
 	if (uv_err_sts & MISC1_UV_RX_ERROR_STATUS_RX_L1_FIFO_FULL_ERRORS_MASK) {
-		// Can never happen for Flea
+		/* Can never happen for Flea */
 		printk("FLEA fifo full - impossible\n");
 		hw->rx_list_sts[1] &= ~rx_uv_mask;
 		hw->rx_list_sts[1] |= rx_uv_error;
@@ -2521,7 +2524,7 @@ bool crystalhd_flea_rx_list1_handler(struct crystalhd_hw *hw,
 	return (tmp_lsts != hw->rx_list_sts[1]);
 }
 
-void crystalhd_flea_rx_isr(struct crystalhd_hw *hw, FLEA_INTR_STS_REG intr_sts)
+void crystalhd_flea_rx_isr(struct crystalhd_hw *hw, union FLEA_INTR_BITS_COMMON intr_sts)
 {
 	unsigned long flags;
 	uint32_t i, list_avail = 0;
@@ -2592,11 +2595,11 @@ void crystalhd_flea_rx_isr(struct crystalhd_hw *hw, FLEA_INTR_STS_REG intr_sts)
 
 bool crystalhd_flea_hw_interrupt_handle(struct crystalhd_adp *adp, struct crystalhd_hw *hw)
 {
-	FLEA_INTR_STS_REG	IntrStsValue;
+	union FLEA_INTR_BITS_COMMON	IntrStsValue;
 	bool				bIntFound		= false;
 	bool				bPostRxBuff		= false;
 	bool				bSomeCmdDone	= false;
-	crystalhd_rx_dma_pkt *rx_pkt;
+	struct crystalhd_rx_dma_pkt *rx_pkt;
 
 	bool	rc = false;
 
@@ -2617,7 +2620,7 @@ bool crystalhd_flea_hw_interrupt_handle(struct crystalhd_adp *adp, struct crysta
 		return rc;
 	}
 
-	// Our interrupt
+	/* Our interrupt */
 	hw->stats.num_interrupts++;
 	rc = true;
 
@@ -2652,7 +2655,7 @@ bool crystalhd_flea_hw_interrupt_handle(struct crystalhd_adp *adp, struct crysta
 	*/
 	if(IntrStsValue.ArmMbox0Int)
 	{
-		//HWFWCmdComplete(pHWExt,IntrBmp);
+		/*HWFWCmdComplete(pHWExt,IntrBmp); */
 		/*Set the Event and the status flag*/
 		if (hw->pfw_cmd_event) {
 			hw->fwcmd_evt_sts = 1;
@@ -2691,7 +2694,7 @@ bool crystalhd_flea_hw_interrupt_handle(struct crystalhd_adp *adp, struct crysta
 	*/
 	if(IntrStsValue.ArmMbox1Int)
 	{
-		//pHWExt->FleaBmpIntrCnt++;
+		/*pHWExt->FleaBmpIntrCnt++; */
 		crystalhd_flea_update_temperature(hw);
 		crystalhd_flea_handle_PicQSts_intr(hw);
 		bPostRxBuff = true;
@@ -2712,7 +2715,7 @@ bool crystalhd_flea_hw_interrupt_handle(struct crystalhd_adp *adp, struct crysta
 		hw->pfnWriteDevRegister(hw->adp, BCHP_INTR_EOI_CTRL, 1);
 	}
 
-	// Try to post RX Capture buffer from ISR context
+	/* Try to post RX Capture buffer from ISR context */
 	if(bPostRxBuff) {
 		rx_pkt = crystalhd_dioq_fetch(hw->rx_freeq);
 		if (rx_pkt)
@@ -2721,25 +2724,25 @@ bool crystalhd_flea_hw_interrupt_handle(struct crystalhd_adp *adp, struct crysta
 
 	if( (hw->FleaPowerState == FLEA_PS_LP_PENDING) && (bSomeCmdDone))
 	{
-		//printk("interrupt_handle: current PS:%d, bSomeCmdDone%d\n", hw->FleaPowerState,bSomeCmdDone);
+		/*printk("interrupt_handle: current PS:%d, bSomeCmdDone%d\n", hw->FleaPowerState,bSomeCmdDone); */
 		crystalhd_flea_set_next_power_state(hw, FLEA_EVT_CMD_COMP);
 	}
 
-	///* NAREN place the device in low power mode if we have not started playing video */
-	//if((hw->FleaPowerState == FLEA_PS_ACTIVE) && (hw->WakeUpDecodeDone != true))
-	//{
-	//	if((hw->ReadyListLen == 0) && (hw->FreeListLen == 0))
-	//	{
-	//		crystalhd_flea_set_next_power_state(hw, FLEA_EVT_FLL_CHANGE);
-	//		printk("ISR Idle\n");
-	//	}
-	//}
+	/* NAREN place the device in low power mode if we have not started playing video */
+	/*if((hw->FleaPowerState == FLEA_PS_ACTIVE) && (hw->WakeUpDecodeDone != true)) */
+	/*{ */
+	/*	if((hw->ReadyListLen == 0) && (hw->FreeListLen == 0)) */
+	/*	{ */
+	/*		crystalhd_flea_set_next_power_state(hw, FLEA_EVT_FLL_CHANGE); */
+	/*		printk("ISR Idle\n"); */
+	/*	} */
+	/*} */
 
 	return rc;
 }
 
 /* This function cannot be called from ISR context since it uses APIs that can sleep */
-bool flea_GetPictureInfo(struct crystalhd_hw *hw, crystalhd_rx_dma_pkt * rx_pkt,
+bool flea_GetPictureInfo(struct crystalhd_hw *hw, struct crystalhd_rx_dma_pkt * rx_pkt,
 							uint32_t *PicNumber, uint64_t *PicMetaData)
 {
 	struct device *dev = &hw->adp->pdev->dev;
@@ -2751,20 +2754,20 @@ bool flea_GetPictureInfo(struct crystalhd_hw *hw, crystalhd_rx_dma_pkt * rx_pkt,
 	bool rtVal = true;
 
 	void *tmpPicInfo = NULL;
-	crystalhd_dio_req *dio = rx_pkt->dio_req;
+	struct crystalhd_dio_req *dio = rx_pkt->dio_req;
 	*PicNumber = 0;
 	*PicMetaData = 0;
 
 	if (!dio)
 		goto getpictureinfo_err_nosem;
 
-// 	if(down_interruptible(&hw->fetch_sem))
-// 		goto getpictureinfo_err_nosem;
+/*	if(down_interruptible(&hw->fetch_sem)) */
+/*		goto getpictureinfo_err_nosem; */
 
-	tmpPicInfo = kmalloc(2 * sizeof(BC_PIC_INFO_BLOCK) + 16, GFP_KERNEL); // since copy_from_user can sleep anyway
+	tmpPicInfo = kmalloc(2 * sizeof(BC_PIC_INFO_BLOCK) + 16, GFP_KERNEL); /* since copy_from_user can sleep anyway */
 	if(tmpPicInfo == NULL)
 		goto getpictureinfo_err;
-	dio->pib_va = kmalloc(32, GFP_KERNEL); // temp buffer of 32 bytes for the rest;
+	dio->pib_va = kmalloc(32, GFP_KERNEL); /* temp buffer of 32 bytes for the rest; */
 	if(dio->pib_va == NULL)
 		goto getpictureinfo_err;
 
@@ -2785,7 +2788,7 @@ bool flea_GetPictureInfo(struct crystalhd_hw *hw, crystalhd_rx_dma_pkt * rx_pkt,
 		goto getpictureinfo_err;
 	widthField = *(uint32_t*)(dio->pib_va);
 
-	hw->PICWidth = widthField & 0x3FFFFFFF; // bit 31 is FMT Change, bit 30 is EOS
+	hw->PICWidth = widthField & 0x3FFFFFFF; /* bit 31 is FMT Change, bit 30 is EOS */
 	if (hw->PICWidth > 2048) {
 		dev_err(dev, "Invalid width [%d]\n", hw->PICWidth);
 		goto getpictureinfo_err;
@@ -2854,7 +2857,7 @@ bool flea_GetPictureInfo(struct crystalhd_hw *hw, crystalhd_rx_dma_pkt * rx_pkt,
 		rx_pkt->pib.aspect_ratio			= pPicInfoLine->aspect_ratio;
 		rx_pkt->pib.colour_primaries		= pPicInfoLine->colour_primaries;
 		rx_pkt->pib.picture_meta_payload	= pPicInfoLine->picture_meta_payload;
-		rx_pkt->pib.frame_rate 				= pPicInfoLine->frame_rate;
+		rx_pkt->pib.frame_rate				= pPicInfoLine->frame_rate;
 		rx_pkt->pib.custom_aspect_ratio_width_height = pPicInfoLine->custom_aspect_ratio_width_height;
 		rx_pkt->pib.n_drop				= pPicInfoLine->n_drop;
 		rx_pkt->pib.ycom				= pPicInfoLine->ycom;
@@ -2862,7 +2865,7 @@ bool flea_GetPictureInfo(struct crystalhd_hw *hw, crystalhd_rx_dma_pkt * rx_pkt,
 		hw->PICWidth = rx_pkt->pib.width;
 		hw->LastPicNo=0;
 		hw->LastTwoPicNo=0;
-		hw->PDRatio = 0; // NAREN - reset PD ratio to start measuring for new clip
+		hw->PDRatio = 0; /* NAREN - reset PD ratio to start measuring for new clip */
 		hw->PauseThreshold = hw->DefaultPauseThreshold;
 		hw->TickSpentInPD = 0;
 		rdtscll(hw->TickCntDecodePU);
@@ -2904,12 +2907,12 @@ bool flea_GetPictureInfo(struct crystalhd_hw *hw, crystalhd_rx_dma_pkt * rx_pkt,
 	if(tmpPicInfo)
 		kfree(tmpPicInfo);
 
-// 	up(&hw->fetch_sem);
+/*	up(&hw->fetch_sem); */
 
 	return rtVal;
 
 getpictureinfo_err:
-// 	up(&hw->fetch_sem);
+/*	up(&hw->fetch_sem); */
 
 getpictureinfo_err_nosem:
 	if(dio->pib_va)
@@ -2928,14 +2931,14 @@ uint32_t flea_GetRptDropParam(struct crystalhd_hw *hw, void* pRxDMAReq)
 	uint32_t PicNumber = 0,result = 0;
 	uint64_t PicMetaData = 0;
 
-	if(flea_GetPictureInfo(hw, (crystalhd_rx_dma_pkt *)pRxDMAReq,
+	if(flea_GetPictureInfo(hw, (struct crystalhd_rx_dma_pkt *)pRxDMAReq,
 		&PicNumber, &PicMetaData))
 		result = PicNumber;
 
 	return result;
 }
 
-bool crystalhd_flea_notify_event(struct crystalhd_hw *hw, BRCM_EVENT EventCode)
+bool crystalhd_flea_notify_event(struct crystalhd_hw *hw, enum BRCM_EVENT EventCode)
 {
 	switch(EventCode)
 	{

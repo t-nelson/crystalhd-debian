@@ -30,12 +30,7 @@
 #define _BCM_DRV_INT_H_
 
 
-#ifndef __LINUX_USER__
-#include <windows.h>
-#include "bc_dts_glob.h"
-#else
 #include "bc_dts_glob_lnx.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -262,9 +257,14 @@ BC_STATUS DtsCopyNV12(
 	BC_DTS_PROC_OUT *Vin);
 
 BC_STATUS DtsCopyFormat(
-	struct _DTS_LIB_CONTEXT	*Ctx, 
-	BC_DTS_PROC_OUT *Vout, 
+	struct _DTS_LIB_CONTEXT	*Ctx,
+	BC_DTS_PROC_OUT *Vout,
 	BC_DTS_PROC_OUT *Vin);
+
+BC_STATUS DtsSendEOS(
+	HANDLE  hDevice,
+	uint32_t Op
+);
 
 extern DRVIFLIB_INT_API BC_STATUS
 DtsPushFwBinToLink(HANDLE hDevice, uint32_t *FwBinFile, uint32_t bytesDnld);

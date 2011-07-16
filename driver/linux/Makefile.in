@@ -9,7 +9,6 @@ INCLUDES  = -I$(KDIR)/include
 INCLUDES += -I$(src)/../../include
 INCLUDES += -I$(src)/../../include/link
 INCLUDES += -I$(src)/../../include/flea
-INCLUDES += -I$(src)/../../include/flea/70015/magnum/basemodules/chp/70015/rdb/a0
 
 EXTRA_CFLAGS   = -D__KERNEL__ -DMODULE $(INCLUDES) $(INC)
 EXTRA_CFLAGS  += -Wall -Wstrict-prototypes -Wno-trigraphs -Werror -O2
@@ -33,8 +32,12 @@ all:
 install:
 	if [ -e "/lib/udev/rules.d" ] ; then cp -f 20-crystalhd.rules /lib/udev/rules.d/ ; fi
 	if [ -e "/etc/udev/rules.d" ] ; then cp -f 20-crystalhd.rules /etc/udev/rules.d/ ; fi
-	install -d /lib/modules/$(shell uname -r)/kernel/drivers/video/broadcom
-	install -m 0644 crystalhd.ko /lib/modules/$(shell uname -r)/kernel/drivers/video/broadcom
+	if [ -d "/lib/modules/$(shell uname -r)/kernel/drivers/staging/crystalhd" ] ; \
+		then install -m 0644 crystalhd.ko /lib/modules/$(shell uname -r)/kernel/drivers/staging/crystalhd/ ; \
+	else \
+		install -d /lib/modules/$(shell uname -r)/kernel/drivers/video/broadcom ; \
+		install -m 0644 crystalhd.ko /lib/modules/$(shell uname -r)/kernel/drivers/video/broadcom ; \
+	fi
 	/sbin/depmod -a
 
 clean:

@@ -11,7 +11,7 @@ dnl and 2... for a prerelease
 
 dnl when going to/from release please set the nano correctly !
 dnl releases only do Wall, cvs and prerelease does Werror too
-AS_VERSION(gst-bcmdec, GST_PLUGIN_VERSION, 0, 10, 0, 37,
+AS_VERSION(gst-bcmdec, GST_PLUGIN_VERSION, 0, 10, 40, 0,
     GST_PLUGIN_CVS="no", GST_PLUGIN_CVS="yes")
 
 dnl AM_MAINTAINER_MODE provides the option to enable maintainer mode
@@ -55,7 +55,8 @@ dnl And we can also ask for the right version of gstreamer
 
 
 PKG_CHECK_MODULES(GST, \
-  gstreamer-$GST_MAJORMINOR >= $GST_REQUIRED,
+  gstreamer-$GST_MAJORMINOR >= $GST_REQUIRED
+  gstreamer-video-0.10,
   HAVE_GST=yes,HAVE_GST=no)
 
 dnl Give error and exit if we don't have gstreamer

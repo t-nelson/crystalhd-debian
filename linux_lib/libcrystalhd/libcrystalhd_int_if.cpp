@@ -280,7 +280,7 @@ DtsSetCoreClock(
 	}
 #endif
 	if(freq == 0)
-		return BC_STS_CLK_NOCHG;
+		return BC_STS_SUCCESS;
 
 	n = freq/5;
 
@@ -322,28 +322,7 @@ DtsSetCoreClock(
 		i++;
 	}
 
-	return BC_STS_CLK_NOCHG;
-
-#if 0
-	DtsDevRegisterWr( hDevice, DecHt_PllBCtl, clkRate);
-	cnt = 0;
-	do{
-		bc_sleep_ms(20);
-
-		DtsDevRegisterRead( hDevice, DecHt_PllBCtl, &Val);
-		if(Val == clkRate)
-			break;
-		cnt++;
-	}while(cnt < 50);
-
-
-	if(Val != clkRate){
-		DebugLog_Trace(LDIL_DBG,"DtsSetCoreClock: Failed to change PLL_B_CTL\n");
-		return BC_STS_NO_ACCESS;
-	}
-
-	return BC_STS_SUCCESS;
-#endif
+	return BC_STS_ERROR;
 }
 
 DRVIFLIB_INT_API BC_STATUS
@@ -597,95 +576,6 @@ DtsGetPciConfigSpace(
 
 	return BC_STS_SUCCESS;
 }
-
-/****/
-
-DRVIFLIB_INT_API BC_STATUS
-DtsReadPciConfigSpace(
-    HANDLE		hDevice,
-    uint32_t			Offset,
-    uint32_t			*Value,
-	uint32_t			Size
-    )
-{
-	BC_IOCTL_DATA *pIocData = NULL;
-	BC_PCI_CFG *pciInfo;
-	DTS_LIB_CONTEXT		*Ctx = NULL;
-	BC_STATUS	sts = BC_STS_SUCCESS;
-
-	DTS_GET_CTX(hDevice,Ctx);
-
-	if(!Value)
-	{
-		DebugLog_Trace(LDIL_DBG,"DtsGetPciConfigSpace: Invlid Arguments\n");
-		return BC_STS_ERROR;
-	}
-
-	if(!(pIocData = DtsAllocIoctlData(Ctx)))
-		return BC_STS_INSUFF_RES;
-
-	pciInfo = (BC_PCI_CFG *)&pIocData->u.pciCfg;
-
-	pciInfo->Size = Size;
-	pciInfo->Offset = Offset;
-	if( (sts=DtsDrvCmd(Ctx,BCM_IOC_RD_PCI_CFG,0,pIocData,FALSE)) != BC_STS_SUCCESS){
-		DtsRelIoctlData(Ctx,pIocData);
-		DebugLog_Trace(LDIL_DBG,"DtsGetPciConfigSpace: Ioctl failed: %d\n",sts);
-		return sts;
-	}
-
-	*Value = pciInfo->pci_cfg_space[0] |
-				(pciInfo->pci_cfg_space[1] << 8)|
-				(pciInfo->pci_cfg_space[2] << 16)|
-				(pciInfo->pci_cfg_space[3] << 24);
-
-	//*Value = *(uint32_t *)(pciInfo->pci_cfg_space);
-
-	DtsRelIoctlData(Ctx,pIocData);
-
-	return BC_STS_SUCCESS;
-}
-
-DRVIFLIB_INT_API BC_STATUS
-DtsWritePciConfigSpace(
-    HANDLE		hDevice,
-    uint32_t			Offset,
-    uint32_t			Value,
-	uint32_t			Size
-    )
-{
-	BC_IOCTL_DATA *pIocData = NULL;
-	BC_PCI_CFG *pciInfo;
-	DTS_LIB_CONTEXT		*Ctx = NULL;
-	BC_STATUS	sts = BC_STS_SUCCESS;
-
-	DTS_GET_CTX(hDevice,Ctx);
-
-	if(!(pIocData = DtsAllocIoctlData(Ctx)))
-		return BC_STS_INSUFF_RES;
-
-	pciInfo = (BC_PCI_CFG *)&pIocData->u.pciCfg;
-
-	pciInfo->Size = Size;
-	pciInfo->Offset = Offset;
-	pciInfo->pci_cfg_space[0] = Value & 0xFF;
-	pciInfo->pci_cfg_space[1] = (Value >> 8) & 0xFF;
-	pciInfo->pci_cfg_space[2] = (Value >> 16) & 0xFF;
-	pciInfo->pci_cfg_space[3] = (Value >> 24) & 0xFF;
-
-	//*((uint32_t *)(pciInfo->pci_cfg_space)) = Value;
-	if( (sts=DtsDrvCmd(Ctx,BCM_IOC_WR_PCI_CFG,0,pIocData,FALSE)) != BC_STS_SUCCESS){
-		DtsRelIoctlData(Ctx,pIocData);
-		DebugLog_Trace(LDIL_DBG,"DtsGetPciConfigSpace: Ioctl failed: %d\n",sts);
-		return sts;
-	}
-
-	DtsRelIoctlData(Ctx,pIocData);
-
-	return BC_STS_SUCCESS;
-}
-
-/****/
 
 DRVIFLIB_INT_API BC_STATUS
 DtsDevRegisterRead(

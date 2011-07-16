@@ -4,31 +4,9 @@
 /*
 * Include a whole bunch of RDB files for register definitions
 */
-#include "bchp_misc1.h"
-#include "bchp_misc2.h"
-#include "bchp_misc3.h"
-#include "bchp_scrub_ctrl.h"
-#include "bchp_wrap_misc_intr2.h"
-#include "bchp_armcr4_bridge.h"
-#include "bchp_intr.h"
-#include "bchp_pri_arb_control_regs.h"
-#include "bchp_ddr23_ctl_regs_0.h"
-#include "bchp_ddr23_phy_byte_lane_0.h"
-#include "bchp_ddr23_phy_byte_lane_1.h"
-#include "bchp_ddr23_phy_control_regs.h"
-#include "bchp_clk.h"
-#include "bchp_pcie_tl.h"
-#include "bchp_sun_gisb_arb.h"
-#include "bchp_misc_perst.h"
-#include "bchp_decode_cpuregs_0.h"
-#include "bchp_decode_cpuregs2_0.h"
-#include "bchp_pcie_cfg.h"
-#include "bchp_mfd.h"
-#include "bchp_sun_top_ctrl.h"
-#include "bchp_gio.h"
-#include "bchp_pri_client_regs.h"
+#include "bcm_70015_regs.h"
 
-// Assume we have 64MB DRam
+/* Assume we have 64MB DRam */
 #define FLEA_TOTAL_DRAM_SIZE		64*1024*1024
 #define FLEA_GISB_DIRECT_BASE		0x50
 
@@ -69,19 +47,19 @@
 -- We use BCHP_ARMCR4_BRIDGE_REG_MBOX_ARM1 as FW to Host mailbox.
 */
 
-// Address where the command parameters are written.
+/* Address where the command parameters are written. */
 #define DDRADDR_4_FWCMDS		0x100
 
-//
-// mailbox used for passing the FW Command address (DDR address) to
-// firmware.
-//
+/* */
+/* mailbox used for passing the FW Command address (DDR address) to */
+/* firmware. */
+/* */
 #define FW_CMD_POST_MBOX		BCHP_ARMCR4_BRIDGE_REG_MBOX_ARM1
 
-// Once we get a firmware command done interrupt,
-// we will need to get the address of the response.
-// This mailbox is written by FW before asserting the
-// firmware command done interrupt.
+/* Once we get a firmware command done interrupt, */
+/* we will need to get the address of the response. */
+/* This mailbox is written by FW before asserting the */
+/* firmware command done interrupt. */
 #define FW_CMD_RES_MBOX			BCHP_ARMCR4_BRIDGE_REG_MBOX_PCI1
 
 /*
@@ -103,9 +81,9 @@
 -- We were only getting 1920,1280 or 720 as picture widths.
 */
 #define PIC_PIB_DATA_OFFSET_FROM_END	4
-#define PIC_PIB_DATA_SIZE_IN_BYTES		4	//The data that use to be in Y[0] component
-#define PIC_WIDTH_OFFSET_FROM_END		8	//Width information for the driver.
-#define PIC_WIDTH_DATA_SIZE_IN_BYTES	4	//Width information for the driver.
+#define PIC_PIB_DATA_SIZE_IN_BYTES		4	/*The data that use to be in Y[0] component */
+#define PIC_WIDTH_OFFSET_FROM_END		8	/*Width information for the driver. */
+#define PIC_WIDTH_DATA_SIZE_IN_BYTES	4	/*Width information for the driver. */
 
 /*
 -- The format change PIB comes in a dummy frame now.
@@ -122,42 +100,38 @@
 -- same as the interrupt status register. We will
 -- Use the following union for all the registers.
 */
-typedef
-union
-_FLEA_INTR_BITS_COMMON_
+
+union FLEA_INTR_BITS_COMMON
 {
 	struct
 	{
-		uint32_t	L0TxDMADone:1;		// Bit-0
-		uint32_t	L0TxDMAErr:1;		// Bit-1
-		uint32_t	L0YRxDMADone:1;		// Bit-2
-		uint32_t	L0YRxDMAErr:1;		// Bit-3
-		uint32_t	L0UVRxDMADone:1;	// Bit-4
-		uint32_t	L0UVRxDMAErr:1;		// Bit-5
-		uint32_t	Reserved1:2;		// Bit-6-7
-		uint32_t	L1TxDMADone:1;		// Bit-8
-		uint32_t	L1TxDMAErr:1;		// Bit-9
-		uint32_t	L1YRxDMADone:1;		// Bit-10
-		uint32_t	L1YRxDMAErr:1;		// Bit-11
-		uint32_t	L1UVRxDMADone:1;	// Bit-12
-		uint32_t	L1UVRxDMAErr:1;		// Bit-13
-		uint32_t	Reserved2:2;		// Bit-14-15
-		uint32_t	ArmMbox0Int:1;		// Bit-16
-		uint32_t	ArmMbox1Int:1;		// Bit-17
-		uint32_t	ArmMbox2Int:1;		// Bit-18
-		uint32_t	ArmMbox3Int:1;		// Bit-19
-		uint32_t	Reserved3:4;		// Bit-20-23
-		uint32_t	PcieTgtUrAttn:1;	// Bit-24
-		uint32_t	PcieTgtCaAttn:1;	// Bit-25
-		uint32_t 	HaltIntr:1;			// Bit-26
-		uint32_t	Reserved4:5;			// Bit-27-31
+		uint32_t	L0TxDMADone:1;		/* Bit-0 */
+		uint32_t	L0TxDMAErr:1;		/* Bit-1 */
+		uint32_t	L0YRxDMADone:1;		/* Bit-2 */
+		uint32_t	L0YRxDMAErr:1;		/* Bit-3 */
+		uint32_t	L0UVRxDMADone:1;	/* Bit-4 */
+		uint32_t	L0UVRxDMAErr:1;		/* Bit-5 */
+		uint32_t	Reserved1:2;		/* Bit-6-7 */
+		uint32_t	L1TxDMADone:1;		/* Bit-8 */
+		uint32_t	L1TxDMAErr:1;		/* Bit-9 */
+		uint32_t	L1YRxDMADone:1;		/* Bit-10 */
+		uint32_t	L1YRxDMAErr:1;		/* Bit-11 */
+		uint32_t	L1UVRxDMADone:1;	/* Bit-12 */
+		uint32_t	L1UVRxDMAErr:1;		/* Bit-13 */
+		uint32_t	Reserved2:2;		/* Bit-14-15 */
+		uint32_t	ArmMbox0Int:1;		/* Bit-16 */
+		uint32_t	ArmMbox1Int:1;		/* Bit-17 */
+		uint32_t	ArmMbox2Int:1;		/* Bit-18 */
+		uint32_t	ArmMbox3Int:1;		/* Bit-19 */
+		uint32_t	Reserved3:4;		/* Bit-20-23 */
+		uint32_t	PcieTgtUrAttn:1;	/* Bit-24 */
+		uint32_t	PcieTgtCaAttn:1;	/* Bit-25 */
+		uint32_t	HaltIntr:1;			/* Bit-26 */
+		uint32_t	Reserved4:5;			/* Bit-27-31 */
 	};
 
 	 uint32_t	WholeReg;
-}FLEA_INTR_BITS_COMMON;
-
-typedef FLEA_INTR_BITS_COMMON FLEA_INTR_STS_REG;
-typedef FLEA_INTR_BITS_COMMON FLEA_MASK_REG;
+};
 
 /*
 ================================================================
@@ -185,26 +159,23 @@ typedef FLEA_INTR_BITS_COMMON FLEA_MASK_REG;
 --  4. Enter this state when RX is not running, either before it is started or after it is stopped.
 =================================================================
 */
-typedef
-enum
-_FLEA_POWER_STATES_
-{
+
+enum FLEA_POWER_STATES {
 	FLEA_PS_NONE=0,
 	FLEA_PS_STOPPED,
 	FLEA_PS_ACTIVE,
 	FLEA_PS_LP_PENDING,
 	FLEA_PS_LP_COMPLETE
-}FLEA_POWER_STATES;
+};
 
-typedef enum _FLEA_STATE_CH_EVENT_
-{
+enum FLEA_STATE_CH_EVENT {
 	FLEA_EVT_NONE=0,
 	FLEA_EVT_START_DEVICE,
 	FLEA_EVT_STOP_DEVICE,
 	FLEA_EVT_FLL_CHANGE,
 	FLEA_EVT_FW_CMD_POST,
 	FLEA_EVT_CMD_COMP
-}FLEA_STATE_CH_EVENT;
+};
 
 #define TEST_BIT(_value_,_bit_number_)	(_value_ & (0x00000001 << _bit_number_))
 
@@ -215,4 +186,3 @@ typedef enum _FLEA_STATE_CH_EVENT_
 {_value_ |=  (0x01 << _bit_number_);}
 
 #endif
-

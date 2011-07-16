@@ -38,6 +38,7 @@
 #include "libcrystalhd_if.h"
 #include "libcrystalhd_int_if.h"
 #include "libcrystalhd_priv.h"
+#include "libcrystalhd_parser.h"
 
 /*============== Global shared area usage ======================*/
 /* Global mode settings */
@@ -791,14 +792,14 @@ BOOL DtsCheckRptPic(DTS_LIB_CONTEXT *Ctx, BC_DTS_PROC_OUT *pOut)
 	}
 
 
-	if (Ctx->bEOSCheck && Ctx->bEOS == FALSE)
+	if (Ctx->bEOSCheck && !Ctx->bEOS)
 	{
-		if (bRepeat == TRUE)
+		if (bRepeat)
 			Ctx->EOSCnt ++;
 
 		if (Ctx->EOSCnt >= BC_EOS_PIC_COUNT)
 		{
-			Ctx->bEOS = TRUE;
+			Ctx->bEOS = true;
 			pOut->PicInfo.flags |= VDEC_FLAG_LAST_PICTURE;
 		}
 	}
@@ -1601,9 +1602,12 @@ BC_STATUS DtsReleaseInterface(DTS_LIB_CONTEXT *Ctx)
 
 	DtsReleaseMemPools(Ctx);
 
-	if((Ctx->DevHandle != 0) && close(Ctx->DevHandle)!=0) //Zero if success
+	if(Ctx->DevHandle != 0) //Zero if success
 	{
-		DebugLog_Trace(LDIL_DBG,"DtsDeviceClose: Close Handle Failed with error %d\n",errno);
+		DtsReleaseUserHandle(Ctx);
+
+		if(0 != close(Ctx->DevHandle))
+			DebugLog_Trace(LDIL_DBG,"DtsDeviceClose: Close Handle Failed with error %d\n",errno);
 	}
 
 	DtsSetHwInitSts(BC_DIL_HWINIT_NOT_YET);
@@ -1614,6 +1618,26 @@ BC_STATUS DtsReleaseInterface(DTS_LIB_CONTEXT *Ctx)
 
 	return BC_STS_SUCCESS;
 
+}
+
+//------------------------------------------------------------------------
+// Name: DtsReleaseUserHandle
+// Description: Notfiy the driver to release the user handle
+// Should be called right before close
+//------------------------------------------------------------------------
+BC_STATUS DtsReleaseUserHandle(DTS_LIB_CONTEXT* Ctx)
+{
+	BC_IOCTL_DATA	pIo;
+	BC_STATUS		sts = BC_STS_SUCCESS;
+
+	memset(&pIo, 0, sizeof(BC_IOCTL_DATA));
+
+	if( (sts=DtsDrvCmd(Ctx,BCM_IOC_RELEASE,0,&pIo,FALSE)) != BC_STS_SUCCESS){
+		DebugLog_Trace(LDIL_DBG,"DtsReleaseUserHandle: Ioctl failed: %d\n",sts);
+		return sts;
+	}
+
+	return sts;
 }
 
 //------------------------------------------------------------------------
@@ -2452,6 +2476,8 @@ BC_STATUS txBufFree(pTXBUFFER txBuf)
 }
 
 // TX Thread
+// This thread has dual purpose. First is to send TX data. Second is to detect if we have restarted from any suspend/hibernate action
+// and to restore the HW state
 void * txThreadProc(void *ctx)
 {
 	DTS_LIB_CONTEXT* Ctx = (DTS_LIB_CONTEXT*)ctx;
@@ -2463,6 +2489,8 @@ void * txThreadProc(void *ctx)
 	HANDLE hDevice = (HANDLE)Ctx;
 	BC_DTS_STATUS pStat;
 	int ret = 0;
+	uint32_t waitForPictCount = 0;
+	uint32_t numPicCaptured = 0;
 
 	ret = posix_memalign((void**)&localBuffer, 128, CIRC_TX_BUF_SIZE);
 	if(ret)
@@ -2470,20 +2498,110 @@ void * txThreadProc(void *ctx)
 
 	while(!Ctx->txThreadExit)
 	{
+		// First check the status of the HW
+		// Get the real HW free size and also mark as we want TX information only
+		pStat.cpbEmptySize = (0x3 << 31);
+
+		sts = DtsGetDriverStatus(hDevice, &pStat);
+		if(sts != BC_STS_SUCCESS)
+		{
+			pStat.cpbEmptySize = 0;
+			DebugLog_Trace(LDIL_ERR,"txThreadProc: Got status %d from GetDriverStatus\n", sts);
+			usleep(2 * 1000);
+			continue;
+		}
+
+		//DebugLog_Trace(LDIL_ERR,"txThreadProc: Got hw size %u and data size %u\n", pStat.cpbEmptySize, Ctx->circBuf.busySize);
+
+		if(pStat.PowerStateChange == BC_HW_SUSPEND)
+		{
+			// HW is in suspend mode, sleep 30 ms and then try again
+			usleep(30 * 1000);
+			continue;
+		}
+
+		// hack for indicating EOS when the HW does not signal one
+		// We will check if the HW does not produce a picture for 1s and does not signal EOS either
+		// This way exit maximum in 1s
+		if(Ctx->bEOSCheck)
+		{
+			if(numPicCaptured == pStat.FramesCaptured)
+				waitForPictCount++;
+
+			if(waitForPictCount >= BC_EOS_PIC_COUNT)
+				Ctx->bEOS = true;
+
+			usleep(30 * 1000);
+		}
+		else
+			waitForPictCount = 0;
+
+		if(numPicCaptured != pStat.FramesCaptured)
+		{
+			waitForPictCount = 0;
+			numPicCaptured = pStat.FramesCaptured;
+		}
+
+		if(pStat.PowerStateChange == BC_HW_RESUME)
+		{
+			DebugLog_Trace(LDIL_ERR,"Trying to resume from S3/S5\n");
+			// HW is up, but needs to be initialized
+			DtsSetCoreClock(hDevice, 180); // For LINK
+			sts = DtsSetupHardware(hDevice, true);
+			if(sts != BC_STS_SUCCESS)
+			{
+				// At this point we are dead. Can't do much'
+				DebugLog_Trace(LDIL_ERR,"Cannot Recover from S3/S5 RESUME SetupHardware failed %d\n", sts);
+				usleep(1000 * 1000);
+				continue; // Try again and pray for the best
+			}
+			Ctx->State = BC_DEC_STATE_CLOSE; // Because the HW was reset below us
+			sts = DtsOpenDecoder(hDevice, 0);
+			if(sts != BC_STS_SUCCESS)
+			{
+				// At this point we are dead. Can't do much'
+				DebugLog_Trace(LDIL_ERR,"Cannot Recover from S3/S5 RESUME OpenDecoder failed %d\n", sts);
+				usleep(1000 * 1000);
+				continue; // Try again and pray for the best
+			}
+			sts = DtsStartDecoder(hDevice);
+			if(sts != BC_STS_SUCCESS)
+			{
+				// At this point we are dead. Can't do much'
+				DebugLog_Trace(LDIL_ERR,"Cannot Recover from S3/S5 RESUME StartDecoder failed %d\n", sts);
+				usleep(1000 * 1000);
+				continue; // Try again and pray for the best
+			}
+			sts = DtsStartCapture(hDevice);
+			if(sts != BC_STS_SUCCESS)
+			{
+				// At this point we are dead. Can't do much'
+				DebugLog_Trace(LDIL_ERR,"Cannot Recover from S3/S5 RESUME StartCapture failed %d\n", sts);
+				usleep(1000 * 1000);
+				continue; // Try again and pray for the best
+			}
+			// Force sending SPS/PPS previously stored
+			DtsClrPendMdataList(Ctx);
+			Ctx->LastPicNum = -1;
+			Ctx->LastSessNum = -1;
+			Ctx->EOSCnt = 0;
+			Ctx->DrvStatusEOSCnt = 0;
+			Ctx->bEOS = FALSE;
+			Ctx->PESConvParams.m_lStartCodeDataSize = 0;
+
+			Ctx->PESConvParams.m_bAddSpsPps = true;
+			// Throw away any potential partial data, since we need a complete picture to start decoding
+			txBufFlush(&Ctx->circBuf);
+			// But in case we were already in the mode to be hunting for EOS
+			// and did not send it to HW, resend it so the playback can end gracefully
+			if(Ctx->bEOSCheck)
+				DtsSendEOS(hDevice, 0);
+			DebugLog_Trace(LDIL_ERR,"Resume from S3/S5 Done\n");
+		}
+
 		// Check if we have data to send.
 		if(Ctx->circBuf.busySize != 0)
 		{
-			// Get the real HW free size and also mark as we want TX information only
-			pStat.cpbEmptySize = (0x3 << 31);
-
-			sts = DtsGetDriverStatus(hDevice, &pStat);
-			if(sts != BC_STS_SUCCESS)
-			{
-				// Figure out what to do
-				// For now just try again
-				pStat.cpbEmptySize = 0;
-			}
-
 			if(pStat.cpbEmptySize == 0)
 			{
 				usleep(3000);
@@ -2506,11 +2624,12 @@ void * txThreadProc(void *ctx)
 			else
 			{
 				// signal error to the next procinput
+				DebugLog_Trace(LDIL_ERR,"txThreadProc: Got status %d from TxDmaText\n", sts);
 			}
 		} else
 			usleep(5 * 1000);
-
 	}
+
 	free(localBuffer);
 	localBuffer = NULL;
 	return FALSE;
@@ -2543,9 +2662,9 @@ DRVIFLIB_INT_API BC_STATUS DtsGetHWFeatures(uint32_t *pciids)
 
 	if(pIo.RetSts == BC_STS_SUCCESS) {
 		*pciids = pIo.u.pciCfg.pci_cfg_space[0] |
-					(pIo.u.pciCfg.pci_cfg_space[0] << 8) |
-					(pIo.u.pciCfg.pci_cfg_space[0] << 16) |
-					(pIo.u.pciCfg.pci_cfg_space[0] << 24);
+					(pIo.u.pciCfg.pci_cfg_space[1] << 8) |
+					(pIo.u.pciCfg.pci_cfg_space[2] << 16) |
+					(pIo.u.pciCfg.pci_cfg_space[3] << 24);
 		//*pciids = *(uint32_t*)pIo.u.pciCfg.pci_cfg_space;
 		close(drvHandle);
 		return BC_STS_SUCCESS;

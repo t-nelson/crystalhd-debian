@@ -26,8 +26,6 @@
 #ifndef _BC_DTS_DEFS_H_
 #define _BC_DTS_DEFS_H_
 
-#include "bc_dts_types.h"
-
 /* BIT Mask */
 #define BC_BIT(_x)		(1 << (_x))
 
@@ -58,11 +56,17 @@ typedef enum _BC_STATUS {
 	BC_STS_CERT_VERIFY_ERROR = 23,
 	BC_STS_DEC_EXIST_OPEN	= 24,
 	BC_STS_PENDING		= 25,
-	BC_STS_CLK_NOCHG	= 26,
+	BC_STS_PWR_MGMT		= 26,
 
 	/* Must be the last one.*/
 	BC_STS_ERROR		= -1
 } BC_STATUS;
+
+typedef enum _BC_HW_STATE {
+	BC_HW_RUNNING	= 0,
+	BC_HW_SUSPEND	= 1,
+	BC_HW_RESUME	= 2
+} BC_HW_STATE;
 
 /*------------------------------------------------------*
  *    Registry Key Definitions				*
@@ -90,8 +94,8 @@ typedef struct _BC_REG_CONFIG{
 	uint32_t		DbgOptions;
 } BC_REG_CONFIG;
 
-#if defined(__KERNEL__) || defined(__LINUX_USER__)
-#else
+/*#if defined(__KERNEL__) || defined(__LINUX_USER__) */
+#if defined(_WIN32) || defined(_WIN64)
 /* Align data structures */
 #define ALIGN(x)	__declspec(align(x))
 #endif
@@ -243,7 +247,7 @@ typedef struct _BC_PIB_EXT_VC1 {
 /*------------------------------------------------------*
  *    Picture Information Block				*
  *------------------------------------------------------*/
-#if defined(__LINUX_USER__)
+#if !defined(__KERNEL__)
 /* Values for 'pulldown' field.  '0' means no pulldown information
  * was present for this picture. */
 enum {
@@ -365,7 +369,7 @@ enum {
 
 #define VDEC_FLAG_PICTURE_META_DATA_PRESENT	(0x40000)
 
-#endif /* __LINUX_USER__ */
+#endif /* __KERNEL__ */
 
 typedef struct _BC_PIC_INFO_BLOCK {
 	/* Common fields. */
@@ -415,16 +419,16 @@ enum _POUT_OPTIONAL_IN_FLAGS_{
 	BC_POUT_FLAGS_FLD_BOT	  = 0x80000,	/* Bottom Field data */
 };
 
-//Decoder Capability
+/*Decoder Capability */
 enum DECODER_CAP_FLAGS
 {
 	BC_DEC_FLAGS_H264		= 0x01,
 	BC_DEC_FLAGS_MPEG2		= 0x02,
 	BC_DEC_FLAGS_VC1		= 0x04,
-	BC_DEC_FLAGS_M4P2		= 0x08,	//MPEG-4 Part 2: Divx, Xvid etc.
+	BC_DEC_FLAGS_M4P2		= 0x08,	/*MPEG-4 Part 2: Divx, Xvid etc. */
 };
 
-#if defined(__KERNEL__) || defined(__LINUX_USER__)
+#if defined(__KERNEL__) || defined(__LINUX_USER__) || defined(__LINUX__)
 typedef BC_STATUS(*dts_pout_callback)(void  *shnd, uint32_t width, uint32_t height, uint32_t stride, void *pOut);
 #else
 typedef BC_STATUS(*dts_pout_callback)(void  *shnd, uint32_t width, uint32_t height, uint32_t stride, struct _BC_DTS_PROC_OUT *pOut);
@@ -542,8 +546,8 @@ typedef struct _BC_HW_CAPABILITY_ {
 	BC_COLOR_SPACES		ColorCaps;
 	void*			Reserved1;	/* Expansion Of API */
 
-	//Decoder Capability
-	uint32_t		DecCaps;	//DECODER_CAP_FLAGS
+	/*Decoder Capability */
+	uint32_t		DecCaps;	/*DECODER_CAP_FLAGS */
 } BC_HW_CAPS, *PBC_HW_CAPS;
 
 typedef struct _BC_SCALING_PARAMS_ {
@@ -573,9 +577,9 @@ typedef enum _BC_MEDIA_SUBTYPE_ {
 } BC_MEDIA_SUBTYPE;
 
 typedef struct _BC_INPUT_FORMAT_ {
-	BOOL        FGTEnable;      /*Enable processing of FGT SEI*/
-	BOOL        MetaDataEnable; /*Enable retrieval of picture metadata to be sent to video pipeline.*/
-	BOOL        Progressive;    /*Instruct decoder to always try to send back progressive
+	int         FGTEnable;      /*Enable processing of FGT SEI*/
+	int         MetaDataEnable; /*Enable retrieval of picture metadata to be sent to video pipeline.*/
+	int         Progressive;    /*Instruct decoder to always try to send back progressive
 				     frames. If input content is 1080p, the decoder will
 				     ignore pull-down flags and always give 1080p output.
 				     If 1080i content is processed, the decoder will return
@@ -628,8 +632,8 @@ typedef struct _BC_INFO_CRYSTAL_ {
 		uint32_t version;
 	} fwVersion;
 
-	uint32_t Reserved1; // For future expansion
-	uint32_t Reserved2; // For future expansion
+	uint32_t Reserved1; /* For future expansion */
+	uint32_t Reserved2; /* For future expansion */
 } BC_INFO_CRYSTAL, *PBC_INFO_CRYSTAL;
 
 #endif	/* _BC_DTS_DEFS_H_ */
