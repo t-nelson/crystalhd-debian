@@ -1,0 +1,13 @@
+Description: Patch to fix build failures with GCC-4.6
+Origin: Debian
+
+--- a/driver/linux/crystalhd_hw.h
++++ b/driver/linux/crystalhd_hw.h
+@@ -35,6 +35,7 @@
+ #else
+ #include <asm/semaphore.h>
+ #endif
++#include <linux/delay.h>
+ #include "crystalhd_fw_if.h"
+ #include "crystalhd_misc.h"
+ #include "DriverFwShare.h"

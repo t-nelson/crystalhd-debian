@@ -1,1 +1,2 @@
 exclude-firmware.patch
+driver-build-failure-fix.patch
