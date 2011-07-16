@@ -23,10 +23,19 @@ static struct class *crystalhd_class;
 
 static struct crystalhd_adp *g_adp_info;
 
+extern int bc_get_userhandle_count(struct crystalhd_cmd *ctx);
+
 struct device *chddev(void)
 {
 	return &g_adp_info->pdev->dev;
 }
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 35)
+loff_t noop_llseek(struct file *file, loff_t offset, int origin)
+{
+	return file->f_pos;
+}
+#endif
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 18)
 static irqreturn_t chd_dec_isr(int irq, void *arg)
@@ -168,10 +177,8 @@ static int chd_dec_fetch_cdata(struct crystalhd_adp *adp, crystalhd_ioctl_data *
 		dev_err(chddev(), "failed to pull add_cdata sz:%x "
 			"ua_off:%x\n", io->add_cdata_sz,
 			(unsigned int)ua_off);
-		if (io->add_cdata) {
-			kfree(io->add_cdata);
-			io->add_cdata = NULL;
-		}
+		kfree(io->add_cdata);
+		io->add_cdata = NULL;
 		return -ENODATA;
 	}
 
@@ -263,7 +270,10 @@ static int chd_dec_api_cmd(struct crystalhd_adp *adp, unsigned long ua,
 
 	rc = chd_dec_proc_user_data(adp, temp, ua, 0);
 	if (!rc) {
-		sts = func(&adp->cmds, temp);
+		if(func == NULL)
+			sts = BC_STS_PWR_MGMT; /* Can only happen when we are in suspend state */
+		else
+			sts = func(&adp->cmds, temp);
 		if (sts == BC_STS_PENDING)
 			sts = BC_STS_NOT_IMPL;
 		temp->udata.RetSts = sts;
@@ -279,12 +289,20 @@ static int chd_dec_api_cmd(struct crystalhd_adp *adp, unsigned long ua,
 }
 
 /* API interfaces */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 35)
 static int chd_dec_ioctl(struct inode *in, struct file *fd,
 			 unsigned int cmd, unsigned long ua)
+#else
+static long chd_dec_ioctl(struct file *fd,
+			  unsigned int cmd, unsigned long ua)
+#endif
 {
 	struct crystalhd_adp *adp = chd_get_adp();
+	struct device *dev = &adp->pdev->dev;
 	crystalhd_cmd_proc cproc;
 	struct crystalhd_user *uc;
+
+	dev_dbg(dev, "Entering %s\n", __func__);
 
 	if (!adp || !fd) {
 		dev_err(chddev(), "Invalid adp\n");
@@ -298,7 +316,7 @@ static int chd_dec_ioctl(struct inode *in, struct file *fd,
 	}
 
 	cproc = crystalhd_get_cmd_proc(&adp->cmds, cmd, uc);
-	if (!cproc) {
+	if (!cproc && !(adp->cmds.state & BC_LINK_SUSPEND)) {
 		dev_err(chddev(), "Unhandled command: %d\n", cmd);
 		return -EINVAL;
 	}
@@ -342,7 +360,9 @@ static int chd_dec_close(struct inode *in, struct file *fd)
 {
 	struct crystalhd_adp *adp = chd_get_adp();
 	struct device *dev = &adp->pdev->dev;
+	struct crystalhd_cmd *ctx = &adp->cmds;
 	struct crystalhd_user *uc;
+	uint32_t mode;
 
 	dev_dbg(dev, "Entering %s\n", __func__);
 	if (!adp) {
@@ -356,18 +376,59 @@ static int chd_dec_close(struct inode *in, struct file *fd)
 		return -ENODATA;
 	}
 
-	crystalhd_user_close(&adp->cmds, uc);
+	/* Check and close only if we have not flush/closed before */
+	/* This is needed because release is not guarenteed to be called immediately on close,
+	 * if duplicate file handles exist due to fork etc. This causes problems with close and re-open
+	 of the device immediately */
 
-	adp->cfg_users--;
+	if(uc->in_use) {
+		mode = uc->mode;
+
+		ctx->user[uc->uid].mode = DTS_MODE_INV;
+		ctx->user[uc->uid].in_use = 0;
+
+		dev_info(chddev(), "Closing user[%x] handle with mode %x\n", uc->uid, mode);
+
+		if (((mode & 0xFF) == DTS_DIAG_MODE) ||
+			((mode & 0xFF) == DTS_PLAYBACK_MODE) ||
+			((bc_get_userhandle_count(ctx) == 0) && (ctx->hw_ctx != NULL))) {
+			ctx->cin_wait_exit = 1;
+			ctx->pwr_state_change = BC_HW_RUNNING;
+			/* Stop the HW Capture just in case flush did not get called before stop */
+			/* And only if we had actually started it */
+			if(ctx->hw_ctx->rx_freeq != NULL) {
+				crystalhd_hw_stop_capture(ctx->hw_ctx, true);
+				crystalhd_hw_free_dma_rings(ctx->hw_ctx);
+			}
+			if(ctx->adp->fill_byte_pool)
+				crystalhd_destroy_dio_pool(ctx->adp);
+			if(ctx->adp->elem_pool_head)
+				crystalhd_delete_elem_pool(ctx->adp);
+			ctx->state = BC_LINK_INVALID;
+			crystalhd_hw_close(ctx->hw_ctx, ctx->adp);
+			kfree(ctx->hw_ctx);
+			ctx->hw_ctx = NULL;
+		}
+
+		uc->in_use = 0;
+
+		if(adp->cfg_users > 0)
+			adp->cfg_users--;
+	}
 
 	return 0;
 }
 
 static const struct file_operations chd_dec_fops = {
-	.owner   = THIS_MODULE,
-	.ioctl   = chd_dec_ioctl,
-	.open    = chd_dec_open,
-	.release = chd_dec_close,
+	.owner		= THIS_MODULE,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 35)
+	.ioctl		= chd_dec_ioctl,
+#else
+	.unlocked_ioctl	= chd_dec_ioctl,
+#endif
+	.open		= chd_dec_open,
+	.release	= chd_dec_close,
+	.llseek		= noop_llseek,
 };
 
 static int __devinit chd_dec_init_chdev(struct crystalhd_adp *adp)
@@ -407,11 +468,11 @@ static int __devinit chd_dec_init_chdev(struct crystalhd_adp *adp)
 		goto device_create_fail;
 	}
 
-//	rc = crystalhd_create_elem_pool(adp, BC_LINK_ELEM_POOL_SZ);
-//	if (rc) {
-//		dev_err(xdev, "failed to create device\n");
-//		goto elem_pool_fail;
-//	}
+/*	rc = crystalhd_create_elem_pool(adp, BC_LINK_ELEM_POOL_SZ); */
+/*	if (rc) { */
+/*		dev_err(xdev, "failed to create device\n"); */
+/*		goto elem_pool_fail; */
+/*	} */
 
 	/* Allocate general purpose ioctl pool. */
 	for (i = 0; i < CHD_IODATA_POOL_SZ; i++) {
@@ -428,8 +489,8 @@ static int __devinit chd_dec_init_chdev(struct crystalhd_adp *adp)
 	return 0;
 
 kzalloc_fail:
-	//crystalhd_delete_elem_pool(adp);
-//elem_pool_fail:
+	/*crystalhd_delete_elem_pool(adp); */
+/*elem_pool_fail: */
 	device_destroy(crystalhd_class, MKDEV(adp->chd_dec_major, 0));
 device_create_fail:
 	class_destroy(crystalhd_class);
@@ -456,11 +517,10 @@ static void __devexit chd_dec_release_chdev(struct crystalhd_adp *adp)
 	/* Clear iodata pool.. */
 	do {
 		temp = chd_dec_alloc_iodata(adp, 0);
-		if (temp)
-			kfree(temp);
+		kfree(temp);
 	} while (temp);
 
-	//crystalhd_delete_elem_pool(adp);
+	/*crystalhd_delete_elem_pool(adp); */
 }
 
 static int __devinit chd_pci_reserve_mem(struct crystalhd_adp *pinfo)
@@ -578,7 +638,8 @@ static int __devinit chd_dec_pci_probe(struct pci_dev *pdev,
 	pinfo = kzalloc(sizeof(struct crystalhd_adp), GFP_KERNEL);
 	if (!pinfo) {
 		dev_err(dev, "%s: Failed to allocate memory\n", __func__);
-		return -ENOMEM;
+		rc = -ENOMEM;
+		goto out;
 	}
 
 	pinfo->pdev = pdev;
@@ -586,10 +647,10 @@ static int __devinit chd_dec_pci_probe(struct pci_dev *pdev,
 	rc = pci_enable_device(pdev);
 	if (rc) {
 		dev_err(dev, "%s: Failed to enable PCI device\n", __func__);
-		return rc;
+		goto free_priv;
 	}
 
-	snprintf(pinfo->name, 31, "crystalhd_pci_e:%d:%d:%d",
+	snprintf(pinfo->name, sizeof(pinfo->name), "crystalhd_pci_e:%d:%d:%d",
 		 pdev->bus->number, PCI_SLOT(pdev->devfn),
 		 PCI_FUNC(pdev->devfn));
 
@@ -597,8 +658,7 @@ static int __devinit chd_dec_pci_probe(struct pci_dev *pdev,
 	if (rc) {
 		dev_err(dev, "%s: Failed to set up memory regions.\n",
 			__func__);
-		pci_disable_device(pdev);
-		return -ENOMEM;
+		goto disable_device;
 	}
 
 	pinfo->present	= 1;
@@ -608,12 +668,14 @@ static int __devinit chd_dec_pci_probe(struct pci_dev *pdev,
 	spin_lock_init(&pinfo->lock);
 
 	/* setup api stuff.. */
-	chd_dec_init_chdev(pinfo);
+	rc = chd_dec_init_chdev(pinfo);
+	if (rc)
+		goto release_mem;
+
 	rc = chd_dec_enable_int(pinfo);
 	if (rc) {
 		dev_err(dev, "%s: _enable_int err:%d\n", __func__, rc);
-		pci_disable_device(pdev);
-		return -ENODEV;
+		goto cleanup_chdev;
 	}
 
 	/* Set dma mask... */
@@ -625,15 +687,15 @@ static int __devinit chd_dec_pci_probe(struct pci_dev *pdev,
 		pinfo->dmabits = 32;
 	} else {
 		dev_err(dev, "%s: Unabled to setup DMA %d\n", __func__, rc);
-		pci_disable_device(pdev);
-		return -ENODEV;
+		rc = -ENODEV;
+		goto cleanup_int;
 	}
 
 	sts = crystalhd_setup_cmd_context(&pinfo->cmds, pinfo);
 	if (sts != BC_STS_SUCCESS) {
 		dev_err(dev, "%s: cmd setup :%d\n", __func__, sts);
-		pci_disable_device(pdev);
-		return -ENODEV;
+		rc = -ENODEV;
+		goto cleanup_int;
 	}
 
 	pci_set_master(pdev);
@@ -642,10 +704,21 @@ static int __devinit chd_dec_pci_probe(struct pci_dev *pdev,
 
 	g_adp_info = pinfo;
 
-	return 0;
+out:
+	return rc;
+cleanup_int:
+	chd_dec_disable_int(pinfo);
+cleanup_chdev:
+	chd_dec_release_chdev(pinfo);
+release_mem:
+	chd_pci_release_mem(pinfo);
+disable_device:
+	pci_disable_device(pdev);
+free_priv:
+	kfree(pdev);
+	goto out;
 }
 
-#ifdef CONFIG_PM
 int chd_dec_pci_suspend(struct pci_dev *pdev, pm_message_t state)
 {
 	struct crystalhd_adp *adp;
@@ -668,6 +741,7 @@ int chd_dec_pci_suspend(struct pci_dev *pdev, pm_message_t state)
 	sts = crystalhd_suspend(&adp->cmds, temp);
 	if (sts != BC_STS_SUCCESS) {
 		dev_err(dev, "Crystal HD Suspend %d\n", sts);
+		chd_dec_free_iodata(adp, temp, false);
 		return -ENODEV;
 	}
 
@@ -721,7 +795,6 @@ int chd_dec_pci_resume(struct pci_dev *pdev)
 
 	return 0;
 }
-#endif
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 24)
 static DEFINE_PCI_DEVICE_TABLE(chd_dec_pci_id_table) = {
@@ -744,10 +817,8 @@ static struct pci_driver bc_chd_driver = {
 	.probe    = chd_dec_pci_probe,
 	.remove   = __devexit_p(chd_dec_pci_remove),
 	.id_table = chd_dec_pci_id_table,
-#ifdef CONFIG_PM
 	.suspend  = chd_dec_pci_suspend,
 	.resume   = chd_dec_pci_resume
-#endif
 };
 
 struct crystalhd_adp *chd_get_adp(void)

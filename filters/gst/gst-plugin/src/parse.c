@@ -25,6 +25,7 @@
 #include <glib.h>
 #include <gst/gst.h>
 #include "bc_dts_defs.h"
+#include "bc_dts_types.h"
 #include "parse.h"
 
 void parse_init(Parse *parse)
@@ -85,7 +86,7 @@ gboolean parse_find_strt_code(Parse *parse, guint8 input_format, guint8 *in_buff
 
 gint FindBSStartCode(guint8 *Buf, gint ZerosInStartcode)
 {
-	BOOL bStartCode = TRUE;
+	gboolean bStartCode = TRUE;
 	gint i;
 
 	for (i = 0; i < ZerosInStartcode; i++)

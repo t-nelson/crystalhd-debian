@@ -28,7 +28,7 @@
 #ifndef _BC_DTS_GLOB_LNX_H_
 #define _BC_DTS_GLOB_LNX_H_
 
-#ifdef __LINUX_USER__
+#if !defined(__KERNEL__)
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -82,7 +82,7 @@ enum _BC_DTS_GLOBALS {
 };
 
 /* definitions for HW Pause */
-// NAREN FIXME temporarily disable HW PAUSE
+/* NAREN FIXME temporarily disable HW PAUSE */
 #define HW_PAUSE_THRESHOLD (BC_RX_LIST_CNT)
 #define HW_RESUME_THRESHOLD (BC_RX_LIST_CNT/2)
 
@@ -153,7 +153,7 @@ typedef struct _BC_DTS_STATS {
 	uint8_t			drvRLL;
 	uint8_t			drvFLL;
 	uint8_t			eosDetected;
-	uint8_t			pwr_state_change;
+	uint8_t			pwr_state_change; /* 0 is Default (running/stopped), 1 is going to suspend, 2 is going to resume */
 
 	/* Stats from App */
 	uint32_t		opFrameDropped;
@@ -220,7 +220,11 @@ enum _DECOUT_COMPLETION_FLAGS{
 
 typedef struct _BC_DEC_OUT_BUFF{
 	BC_DEC_YUV_BUFFS	OutPutBuffs;
-	C011_PIB	PibInfo;
+#if !defined(__KERNEL__)
+	C011_PIB		PibInfo;
+#else
+	struct C011_PIB PibInfo;
+#endif
 	uint32_t		Flags;
 	uint32_t		BadFrCnt;
 } BC_DEC_OUT_BUFF;
@@ -273,6 +277,7 @@ typedef enum _BC_DRV_CMD{
 	DRV_CMD_GET_DRV_STAT,	/* Get Driver Internal Statistics */
 	DRV_CMD_RST_DRV_STAT,	/* Reset Driver Internal Statistics */
 	DRV_CMD_NOTIFY_MODE,	/* Notify the Mode to driver in which the application is Operating*/
+	DRV_CMD_RELEASE,		/* Notify the driver to release user handle and application resources */
 
 	/* MUST be the last one.. */
 	DRV_CMD_END,			/* End of the List.. */
@@ -303,6 +308,7 @@ typedef enum _BC_DRV_CMD{
 #define BCM_IOC_RST_DRV_STAT	BC_IOC_IOWR(DRV_CMD_RST_DRV_STAT, BC_IOCTL_MB)
 #define BCM_IOC_NOTIFY_MODE		BC_IOC_IOWR(DRV_CMD_NOTIFY_MODE, BC_IOCTL_MB)
 #define	BCM_IOC_FW_DOWNLOAD		BC_IOC_IOWR(DRV_CMD_FW_DOWNLOAD, BC_IOCTL_MB)
+#define BCM_IOC_RELEASE			BC_IOC_IOWR(DRV_CMD_RELEASE, BC_IOCTL_MB)
 #define	BCM_IOC_END				BC_IOC_VOID
 
 /* Wrapper for main IOCTL data */
@@ -317,8 +323,8 @@ typedef struct _crystalhd_ioctl_data {
 
 enum _crystalhd_kmod_ver{
 	crystalhd_kmod_major	= 3,
-	crystalhd_kmod_minor	= 8,
-	crystalhd_kmod_rev	= 0,
+	crystalhd_kmod_minor	= 10,
+	crystalhd_kmod_rev		= 0,
 };
 
 

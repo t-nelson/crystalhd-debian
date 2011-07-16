@@ -123,7 +123,7 @@ enum _DtsAppSpecificCfgFlags {
 #define MAX_DISORDER_GAP	5
 
 #define ALIGN_BUF_SIZE	(512*1024)
-#define CIRC_TX_BUF_SIZE (4096*1024)
+#define CIRC_TX_BUF_SIZE (1024*1024)
 
 #define	 BC_EOS_DETECTED		0xffffffff
 
@@ -357,11 +357,12 @@ BC_STATUS DtsFetchTimeStampMdata(DTS_LIB_CONTEXT *Ctx, uint16_t snum, uint64_t *
 BC_STATUS DtsPrepareMdataASFHdr(DTS_LIB_CONTEXT *Ctx, DTS_INPUT_MDATA *mData, uint8_t* buf);
 BC_STATUS DtsPrepareMdata(DTS_LIB_CONTEXT *Ctx, uint64_t timeStamp, DTS_INPUT_MDATA **mData, uint8_t** pDataBuf, uint32_t *pSize);
 BC_STATUS DtsNotifyOperatingMode(HANDLE hDevice, uint32_t Mode);
+BC_STATUS DtsReleaseUserHandle(DTS_LIB_CONTEXT *Ctx);
 BC_STATUS DtsGetHWFeatures(uint32_t *pciids);
+BC_STATUS DtsSetupHardware(HANDLE hDevice, BOOL IgnClkChk);
 
 /* Internal helper function */
 uint32_t DtsGetWidthfromResolution(DTS_LIB_CONTEXT *Ctx, uint32_t Resolution);
-
 
 /*====================== Performance Counter Routines ============================*/
 void DtsUpdateInStats(DTS_LIB_CONTEXT	*Ctx, uint32_t	size);
