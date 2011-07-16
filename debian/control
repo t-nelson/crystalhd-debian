@@ -6,7 +6,7 @@ Build-Depends: debhelper (>= 7.0.50~),
                libgstreamer0.10-dev,
                libgstreamer-plugins-base0.10-dev,
                dkms
-Standards-Version: 3.9.1
+Standards-Version: 3.9.2
 Section: libs
 Homepage: http://www.broadcom.com/support/crystal_hd/
 Vcs-Git: git://git.debian.org/git/collab-maint/crystalhd.git
