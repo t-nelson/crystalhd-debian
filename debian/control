@@ -13,7 +13,7 @@ Vcs-Browser: http://git.debian.org/?p=collab-maint/crystalhd.git
 
 Package: libcrystalhd-dev
 Section: libdevel
-Architecture: any
+Architecture: linux-any
 Depends: libcrystalhd3 (= ${binary:Version}),
          ${shlibs:Depends}, ${misc:Depends}
 Description: Crystal HD Video Decoder (development files)
@@ -24,7 +24,7 @@ Description: Crystal HD Video Decoder (development files)
  This package contains the files necessary for development.
 
 Package: libcrystalhd3
-Architecture: any
+Architecture: linux-any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Crystal HD Video Decoder (shared library)
  Crystal HD Solution is a product offered by Broadcom. It is used to enable
@@ -47,7 +47,7 @@ Description: Crystal HD Video Decoder (Linux kernel driver)
 
 Package: gstreamer0.10-crystalhd
 Section: video
-Architecture: any
+Architecture: linux-any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Crystal HD Video Decoder (GStreamer plugin)
  Crystal HD Solution is a product offered by Broadcom. It is used to enable
