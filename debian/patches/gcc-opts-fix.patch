@@ -1,3 +1,6 @@
+Description: Patch to fix build failures on non x86 machines.
+Origin: Debian
+
 --- a/linux_lib/libcrystalhd/Makefile
 +++ b/linux_lib/libcrystalhd/Makefile
 @@ -24,7 +24,10 @@
