@@ -1,3 +1,4 @@
 exclude-firmware.patch
 driver-build-failure-fix.patch
 gcc-opts-fix.patch
+spelling-fix.patch

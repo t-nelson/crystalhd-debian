@@ -1,0 +1,14 @@
+Description: Patch that does basic spell check.
+Origin: Debian
+
+--- a/linux_lib/libcrystalhd/libcrystalhd_fwdiag_if.cpp
++++ b/linux_lib/libcrystalhd/libcrystalhd_fwdiag_if.cpp
+@@ -233,7 +233,7 @@
+ 
+ 		}
+ 		else
+-			DebugLog_Trace(LDIL_DBG,"Uart Set Sucessfully\n");
++			DebugLog_Trace(LDIL_DBG,"Uart Set Successfully\n");
+ 
+ 		//START_PROCESSOR bit in DCI_CMD.
+ 		RegVal = 0;
