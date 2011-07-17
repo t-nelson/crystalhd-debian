@@ -1,3 +1,9 @@
+crystalhd (1:0.0~git20110715.fdd2f19-3) unstable; urgency=low
+
+  * Make crystalhd package build only on linux machines.
+
+ -- Andres Mejia <amejia@debian.org>  Sun, 17 Jul 2011 11:32:15 -0400
+
 crystalhd (1:0.0~git20110715.fdd2f19-2) unstable; urgency=low
 
   * Fix build of crystalhd on non i386 and amd64 systems.
