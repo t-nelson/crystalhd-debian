@@ -1,3 +1,9 @@
+crystalhd (1:0.0~git20110715.fdd2f19-2) unstable; urgency=low
+
+  * Fix build of crystalhd on non i386 and amd64 systems.
+
+ -- Andres Mejia <amejia@debian.org>  Sun, 17 Jul 2011 11:08:11 -0400
+
 crystalhd (1:0.0~git20110715.fdd2f19-1) unstable; urgency=low
 
   * Initial release. (Closes: #577130)
