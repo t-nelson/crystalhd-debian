@@ -2,7 +2,7 @@
 
 # Script used to generate the orig source tarball for crystalhd.
 
-CRYSTALHD_GIT_URL="git://git.wilsonet.com/crystalhd.git"
+CRYSTALHD_GIT_URL="git://linuxtv.org/jarod/crystalhd.git"
 CRYSTALHD_GIT_COMMIT="fdd2f19ac739a3db1fd7469ea19ceaefe0822e5a"
 DATE_RETRIEVED="20110715"
 COMMIT_SHORT_FORM="$(echo $CRYSTALHD_GIT_COMMIT | \
