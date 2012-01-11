@@ -1,3 +1,4 @@
+multiarch-support.patch
 exclude-firmware.patch
 driver-build-failure-fix.patch
 gcc-opts-fix.patch

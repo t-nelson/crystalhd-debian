@@ -1,0 +1,14 @@
+Description: Patch to allow support for multiarch.
+Origin: Debian
+
+--- a/linux_lib/libcrystalhd/Makefile
++++ b/linux_lib/libcrystalhd/Makefile
+@@ -7,7 +7,7 @@
+ BCLIB_NAME=libcrystalhd.so
+ BCLIB_SL=$(BCLIB_NAME).$(BCLIB_MAJOR)
+ BCLIB=$(BCLIB_NAME).$(BCLIB_MAJOR).$(BCLIB_MINOR)
+-LIBDIR=/usr/lib
++LIBDIR ?= /usr/lib
+ 
+ AT   = @
+ ECHO = ${AT} echo

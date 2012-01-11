@@ -3,8 +3,9 @@ crystalhd (1:0.0~git20110715.fdd2f19-5) UNRELEASED; urgency=low
   * Update location to source in crystalhd-get-orig-source script.
   * Make dpkg-source options permenant.
   * Add Suggests of firmware-crystalhd.
+  * Add support for multiarch for libcrystalhd.
 
- -- Andres Mejia <amejia@debian.org>  Tue, 10 Jan 2012 23:54:17 -0500
+ -- Andres Mejia <amejia@debian.org>  Wed, 11 Jan 2012 00:12:55 -0500
 
 crystalhd (1:0.0~git20110715.fdd2f19-4) unstable; urgency=low
 
