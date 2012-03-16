@@ -1,3 +1,10 @@
+crystalhd (1:0.0~git20110715.fdd2f19-6) unstable; urgency=low
+
+  * Make dev package multiarch installable.
+  * Set Standards-Version to 3.9.3.
+
+ -- Andres Mejia <amejia@debian.org>  Fri, 16 Mar 2012 17:02:49 -0400
+
 crystalhd (1:0.0~git20110715.fdd2f19-5) unstable; urgency=low
 
   * Update location to source in crystalhd-get-orig-source script.
