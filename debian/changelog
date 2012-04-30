@@ -1,3 +1,9 @@
+crystalhd (1:0.0~git20110715.fdd2f19-7) unstable; urgency=low
+
+  * Include udev rules for crystalhd-dkms.
+
+ -- Andres Mejia <amejia@debian.org>  Mon, 30 Apr 2012 13:48:40 -0400
+
 crystalhd (1:0.0~git20110715.fdd2f19-6) unstable; urgency=low
 
   * Make dev package multiarch installable.
