@@ -26,6 +26,7 @@
 
 #include "crystalhd_hw.h"
 #include "crystalhd_flea_ddr.h"
+#include "linux/delay.h"
 
 /*#include "bchp_ddr23_ctl_regs_0.h" */
 /*#include "bchp_ddr23_phy_byte_lane_0.h" */
